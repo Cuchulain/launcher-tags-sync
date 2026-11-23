@@ -55,3 +55,9 @@ jobs:
           name: launcher-tags-sync-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launcher-tags-sync-release-unsigned-apk
+          path: android/app/build/outputs/apk/release/*-unsigned.apk
+          if-no-files-found: error
