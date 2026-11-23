@@ -1,0 +1,19 @@
+{
+  "formatVersion": 2,
+  "exportedAtEpochMs": 1700000002000,
+  "preferences": {
+    "user_app_preferences": {
+      "nickname_app_org.example.edge": {
+        "type": "string",
+        "value": "síť, moje"
+      },
+      "misc_setting": {
+        "type": "int",
+        "value": 42
+      }
+    }
+  },
+  "selectedExportItems": [
+    "SETTINGS"
+  ]
+}

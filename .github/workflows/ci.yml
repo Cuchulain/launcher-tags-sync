@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest] # Linux x86_64, macOS arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: cargo build --release --locked
+      - name: Smoke test release binary on fixtures
+        run: |
+          ./target/release/launcher-tags-sync sync \
+            --kvaesitso fixtures/basic/input.kvaesitso \
+            --quicksearch fixtures/basic/input.quicksearch \
+            --output "$RUNNER_TEMP/out.quicksearch" --report "$RUNNER_TEMP/report.json"

@@ -1,0 +1,52 @@
+{
+  "formatVersion": 2,
+  "exportedAtEpochMs": 1700000000000,
+  "preferences": {
+    "user_app_preferences": {
+      "nickname_app_org.example.reader": {
+        "type": "string",
+        "value": "e-book, čtení"
+      },
+      "nickname_app_org.example.maps": {
+        "type": "string",
+        "value": "navigace"
+      },
+      "nickname_app_org.example.unrelated": {
+        "type": "string",
+        "value": "jen-moje"
+      },
+      "nickname_app_org.example.music:10": {
+        "type": "string",
+        "value": "práce"
+      },
+      "nickname_app_shortcut_example-shortcut": {
+        "type": "string",
+        "value": "spustit"
+      },
+      "nickname_contact_17": {
+        "type": "string",
+        "value": "Známý"
+      },
+      "search_theme": {
+        "type": "string",
+        "value": "synthetic-dark"
+      },
+      "search_enabled": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    "app_session_state": {
+      "last_query": {
+        "type": "string",
+        "value": "safe sample query"
+      }
+    }
+  },
+  "selectedExportItems": [
+    "NOTES",
+    "SETTINGS"
+  ],
+  "llmPersonalContexts": {},
+  "notes": []
+}

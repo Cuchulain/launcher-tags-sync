@@ -1,0 +1,14 @@
+{
+  "policy": "default conservative (skip comma-bearing tags with warning, trim whitespace)",
+  "source_app_tag_records": 6,
+  "invalid_app_keys_skipped": 2,
+  "source_shortcut_tag_records_skipped": 1,
+  "comma_tags_skipped": 1,
+  "new_app_nickname_entries": 0,
+  "extended_app_nickname_entries": 1,
+  "added_unique_aliases": 1,
+  "warnings_expected": [
+    "malformed app key",
+    "comma in tag value"
+  ]
+}

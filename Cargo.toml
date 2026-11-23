@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = ["crates/launcher-tags-core", "crates/launcher-tags-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision"] }
+thiserror = "2"
+unicode-normalization = "0.1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+tempfile = "3"
+proptest = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true

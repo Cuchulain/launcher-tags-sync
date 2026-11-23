@@ -1,0 +1,20 @@
+{
+  "fixture_version": 1,
+  "real_user_data_included": false,
+  "basic": {
+    "source": "basic/input.kvaesitso",
+    "target": "basic/input.quicksearch",
+    "expected": "basic/expected.quicksearch",
+    "report": "basic/expected-report.json"
+  },
+  "edgecases": {
+    "source": "edgecases/input.kvaesitso",
+    "target": "edgecases/input.quicksearch",
+    "expected": "edgecases/expected.quicksearch",
+    "report": "edgecases/expected-report.json"
+  },
+  "invalid": {
+    "quicksearch": "invalid/invalid-quicksearch.quicksearch",
+    "kvaesitso": "invalid/missing-customizations.kvaesitso"
+  }
+}

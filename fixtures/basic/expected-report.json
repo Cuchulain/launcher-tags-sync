@@ -1,0 +1,12 @@
+{
+  "source_app_tag_records": 7,
+  "source_unique_app_packages": 4,
+  "source_shortcut_tag_records_skipped": 2,
+  "source_duplicate_app_tag_records": 1,
+  "new_app_nickname_entries": 2,
+  "extended_app_nickname_entries": 2,
+  "unchanged_existing_app_nickname_entries": 2,
+  "added_unique_aliases": 5,
+  "preserved_non_app_settings": true,
+  "warnings": []
+}

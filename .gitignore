@@ -1,0 +1,19 @@
+/target/
+/local-private/
+*.tmp
+*.log
+*.bak
+.DS_Store
+.env
+.env.*
+# Avoid accidentally committing exported personal backups at repository root
+/*.kvaesitso
+/*.quicksearch
+.kata.local.toml
+# Converted outputs and reports anywhere in the tree (fixtures are whitelisted)
+*.quicksearch
+*.kvaesitso
+!fixtures/**/*.quicksearch
+!fixtures/**/*.kvaesitso
+*-report.json
+!fixtures/**/expected-report.json
