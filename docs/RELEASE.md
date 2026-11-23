@@ -35,7 +35,8 @@ The binaries are built with the committed `Cargo.lock` (`--locked`), `lto = true
 
 ```shell
 export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-export RUSTFLAGS="--remap-path-prefix=$(pwd)=. --remap-path-prefix=$HOME/.cargo=~/.cargo"
+export RUSTFLAGS="--remap-path-prefix=$(pwd)=. --remap-path-prefix=$HOME/.cargo=~/.cargo \
+  --remap-path-prefix=$(rustc --print sysroot)/lib/rustlib/src/rust=/rustc/$(rustc -vV | sed -n 's/^commit-hash: //p')"
 rustup toolchain install 1.88.0   # pin the same toolchain for every build
 cargo +1.88.0 build --release --locked
 shasum -a 256 target/release/launcher-tags-sync

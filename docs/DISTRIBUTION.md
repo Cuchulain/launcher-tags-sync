@@ -41,6 +41,20 @@ remapping, no dependency-info blob, versions from `Cargo.toml`. Verified locally
 checkouts in different directories produce byte-identical unsigned APKs; CI prints the
 SHA-256 of the Linux build for comparison.
 
+What is and is not reproducible (verified 2026-11-23):
+
+* Same host OS, different checkout paths, users and cargo homes: **identical** unsigned APKs
+  (two macOS checkouts; two independent GitHub Linux runs).
+* macOS vs Linux: the native library differs, because host-compiled proc-macros feed into
+  symbol hashes and the NDK's host-specific LLD records its build path. Therefore **release
+  APKs are only built on Linux x86_64** (the release workflow), which is what F-Droid's build
+  server uses too.
+* Absolute paths (checkout, cargo home, toolchain `rust-src`) are remapped and do not appear
+  in the binaries.
+
+Before the first F-Droid submission, `release.yml` can be run manually
+(*Actions → Release → Run workflow*): it builds and signs everything without publishing.
+
 Steps (needs a GitLab account):
 
 1. Release on GitHub first (step 1).

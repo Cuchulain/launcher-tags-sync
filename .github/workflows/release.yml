@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Manual dry run: builds and signs everything, publishes nothing.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,6 +30,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check tag matches Cargo version
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -49,7 +52,9 @@ jobs:
         run: |
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
-          export RUSTFLAGS="--remap-path-prefix=$PWD=. --remap-path-prefix=$HOME/.cargo=~/.cargo"
+          sysroot="$(rustc --print sysroot)"
+          commit="$(rustc -vV | sed -n 's/^commit-hash: //p')"
+          export RUSTFLAGS="--remap-path-prefix=$PWD=. --remap-path-prefix=$HOME/.cargo=~/.cargo --remap-path-prefix=$sysroot/lib/rustlib/src/rust=/rustc/$commit"
           cargo build --release --locked --target ${{ matrix.target }}
 
       - name: Package
@@ -147,6 +152,7 @@ jobs:
           if-no-files-found: error
 
   release:
+    if: startsWith(github.ref, 'refs/tags/')
     needs: [build, android]
     runs-on: ubuntu-latest
     permissions:
