@@ -169,7 +169,9 @@ profile keys, that were not modified.
 `android/` holds an Android app with the same engine (Rust core via UniFFI) and a guided
 export → review → save → import flow, in English and Czech. Debug APKs are built by CI
 (`.github/workflows/android.yml`, artifact `launcher-tags-sync-debug-apk`). Build and design
-notes: [`docs/ANDROID.md`](docs/ANDROID.md).
+notes: [`docs/ANDROID.md`](docs/ANDROID.md). Releases ship a signed APK; F-Droid (reproducible
+build) and Google Play use the same signing key, see [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md)
+and the [privacy policy](docs/PRIVACY.md).
 
 ## Development
 

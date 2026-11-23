@@ -1,0 +1,47 @@
+# Draft for https://gitlab.com/fdroid/fdroiddata (metadata/cz.jancejka.launchertagssync.yml).
+# Reviewed by F-Droid maintainers on submission; adjust srclib versions to what fdroiddata ships.
+Categories:
+  - System
+License: MIT
+AuthorName: Jan Čejka
+SourceCode: https://github.com/Cuchulain/launcher-tags-sync
+IssueTracker: https://github.com/Cuchulain/launcher-tags-sync/issues
+Changelog: https://github.com/Cuchulain/launcher-tags-sync/blob/HEAD/CHANGELOG.md
+
+AutoName: Launcher Tags Sync
+
+RepoType: git
+Repo: https://github.com/Cuchulain/launcher-tags-sync.git
+# Reproducible build: F-Droid builds from source and publishes the developer-signed APK
+# when the unsigned contents are identical.
+Binaries: https://github.com/Cuchulain/launcher-tags-sync/releases/download/v%v/launcher-tags-sync-v%v.apk
+
+Builds:
+  - versionName: 0.2.0
+    versionCode: 200
+    commit: v0.2.0
+    subdir: android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y build-essential
+    srclibs:
+      - rustup@1.28.2
+    prebuild:
+      # Same toolchain as android/app/build.gradle.kts (rustToolchain) and the release CI.
+      - $$rustup$$/rustup-init.sh -y --profile minimal --default-toolchain 1.100.0 --component rust-src
+        --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - source $HOME/.cargo/env
+      - cargo install cargo-ndk --version 4.1.2 --locked
+    gradle:
+      - yes
+    ndk: 30.0.16248370
+
+AllowedAPKSigningKeys: 7c19839d1a335f0f5534781eeb322f5f9e91e6ea8384a333b27bc136fc366fdc
+
+# versionCode is computed in Gradle from the Cargo.toml version
+# (MAJOR*10000 + MINOR*100 + PATCH), so automatic update checks need a VercodeOperation
+# agreed with the reviewers; until then updates are submitted manually.
+AutoUpdateMode: None
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 0.2.0
+CurrentVersionCode: 200

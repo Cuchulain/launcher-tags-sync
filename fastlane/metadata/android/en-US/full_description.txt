@@ -1,0 +1,19 @@
+<p>Tag your apps in the <b>Kvaesitso</b> launcher and find them by those tags in <b>Quick Search</b>: Launcher Tags Sync turns Kvaesitso app tags into Quick Search app nicknames, so an app tagged “music” shows up when you type “music”.</p>
+
+<p>It works entirely <b>offline on backup files</b>. You export a backup from each app, the wizard shows exactly what will change, saves new backup files, and tells you how to import them. Your apps are never modified behind your back.</p>
+
+<p><b>Two modes</b></p>
+<ul>
+<li><b>Kvaesitso → Quick Search</b>: adds tags as nicknames. Existing nicknames stay first and unchanged; nothing is ever removed.</li>
+<li><b>Both ways</b>: keeps tags and nicknames in sync in both directions, including deletions, using a remembered sync state. Conflicts are reported instead of deleting anything.</li>
+</ul>
+
+<p><b>Safety first</b></p>
+<ul>
+<li>Every other setting, note and value in your backups is preserved.</li>
+<li>App shortcut tags and work-profile apps are never mixed up with normal apps.</li>
+<li>Outdated exports, backups that were not imported last time and unusually many deletions are detected and explained before anything happens.</li>
+<li>No internet permission, no tracking, no ads. The sync state stays in private app storage and is excluded from Android backups.</li>
+</ul>
+
+<p>The conversion engine is a tested Rust library, the same one used by the open-source command-line tool. Not affiliated with Kvaesitso or Quick Search.</p>

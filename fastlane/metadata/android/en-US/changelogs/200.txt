@@ -1,0 +1,1 @@
+First release: one-way and two-way sync of Kvaesitso app tags and Quick Search app nicknames, guided export/import, run history.

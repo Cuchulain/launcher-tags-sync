@@ -12,6 +12,11 @@ All notable changes to this project are documented here. Format:
 - Android app (`android/`, Kotlin/Compose) using the Rust core via the new
   `launcher-tags-ffi` UniFFI crate: guided export/review/save/import, one-way and two-way
   modes, run history; English and Czech. CI builds a debug APK.
+- Android release signing (one key for GitHub Releases, F-Droid and Google Play), version
+  derived from `Cargo.toml`, reproducible builds (pinned Rust 1.100.0 and NDK, path
+  remapping); release workflow publishes the signed APK and keeps the AAB as an artifact.
+- Store metadata (`fastlane/`, English and Czech), app icon, F-Droid metadata draft,
+  `docs/DISTRIBUTION.md`, `docs/PRIVACY.md`.
 - `launcher_tags_core::run`: in-memory entry points shared by the CLI and the app.
 - `sync --direction both` (v0.2): three-way bidirectional sync of Kvaesitso app tags and
   Quick Search app nicknames against a `--state` file, propagating additions and deletions;

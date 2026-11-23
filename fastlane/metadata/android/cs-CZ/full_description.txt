@@ -1,0 +1,19 @@
+<p>Označ si aplikace tagy v launcheru <b>Kvaesitso</b> a najdi je podle nich v <b>Quick Search</b>: Launcher Tags Sync převádí tagy aplikací z Kvaesitso na přezdívky aplikací v Quick Search, takže aplikace s tagem „hudba“ se ukáže, když napíšeš „hudba“.</p>
+
+<p>Vše probíhá <b>offline nad zálohami</b>. Z každé aplikace exportuješ zálohu, průvodce ukáže přesně, co se změní, uloží nové soubory záloh a poradí, jak je naimportovat. Aplikace se nikdy nemění bez tvého vědomí.</p>
+
+<p><b>Dva režimy</b></p>
+<ul>
+<li><b>Kvaesitso → Quick Search</b>: přidá tagy jako přezdívky. Stávající přezdívky zůstanou první a beze změny; nic se nemaže.</li>
+<li><b>Obousměrně</b>: udržuje tagy a přezdívky v souladu oběma směry včetně mazání, podle zapamatovaného stavu synchronizace. Konflikty se nahlásí, nic se nesmaže.</li>
+</ul>
+
+<p><b>Bezpečnost na prvním místě</b></p>
+<ul>
+<li>Všechna ostatní nastavení, poznámky a hodnoty v zálohách zůstanou zachované.</li>
+<li>Tagy zástupců aplikací a aplikace v pracovním profilu se nikdy nepletou s běžnými aplikacemi.</li>
+<li>Zastaralé exporty, minule nenaimportované zálohy a neobvykle mnoho mazání se rozpoznají a vysvětlí dřív, než se cokoli stane.</li>
+<li>Bez přístupu k internetu, bez sledování, bez reklam. Stav synchronizace zůstává v soukromém úložišti aplikace a nezálohuje se.</li>
+</ul>
+
+<p>Převod zajišťuje otestovaná knihovna v Rustu, stejná jako v open-source nástroji pro příkazovou řádku. Aplikace nesouvisí s autory Kvaesitso ani Quick Search.</p>

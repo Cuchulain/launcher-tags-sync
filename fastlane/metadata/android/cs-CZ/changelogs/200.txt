@@ -1,0 +1,1 @@
+První vydání: jednosměrná i obousměrná synchronizace tagů Kvaesitso a přezdívek Quick Search, průvodce exportem/importem, historie běhů.
