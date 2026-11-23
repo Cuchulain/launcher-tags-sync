@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.gradle.api.tasks.Exec
 
 plugins {
@@ -6,28 +7,73 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+// ---------------------------------------------------------------- versions
+// Single source of truth: the Rust workspace version. versionCode = MAJOR*10000 + MINOR*100 + PATCH.
+val repoRoot: File = rootProject.projectDir.parentFile
+val appVersion: String =
+  Regex("""(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"""")
+    .find(File(repoRoot, "Cargo.toml").readText())!!.groupValues[1]
+val appVersionCode: Int = appVersion.split(".").map(String::toInt).let { (a, b, c) -> a * 10000 + b * 100 + c }
+
+// Pinned for reproducible builds (F-Droid verifies our signed APK against its own build).
+val rustToolchain = findProperty("rustToolchain") as String? ?: "1.100.0"
+val pinnedNdk = "30.0.16248370"
+
+// ---------------------------------------------------------------- signing
+// Release signing comes from env (CI) or ../../local-private/signing.properties (git-ignored).
+// Without it, release builds are unsigned (e.g. F-Droid's own build).
+// (Not `.apply {}` / `java.util.*`: in a build script those resolve to Gradle's apply/java.)
+fun loadProperties(f: File): Properties =
+  Properties().also { p -> if (f.isFile) f.inputStream().use { p.load(it) } }
+
+val signingProps = loadProperties(File(repoRoot, "local-private/signing.properties"))
+
+fun signing(key: String, env: String): String? = System.getenv(env)?.takeIf { it.isNotEmpty() } ?: signingProps.getProperty(key)
+
+val releaseStoreFile = signing("storeFile", "ANDROID_KEYSTORE_FILE")
+
 // ---------------------------------------------------------------- Rust core via UniFFI
-// The Rust workspace is two levels up. `cargo ndk` builds liblauncher_tags_ffi.so for every
-// ABI into build/rustJniLibs; uniffi-bindgen generates Kotlin from the arm64 library.
-val repoRoot = rootProject.projectDir.parentFile
+// `cargo ndk` builds liblauncher_tags_ffi.so for every ABI into build/rustJniLibs;
+// uniffi-bindgen generates Kotlin from the first ABI's library.
 val rustJniLibs = layout.buildDirectory.dir("rustJniLibs")
 val uniffiKotlin = layout.buildDirectory.dir("generated/uniffi/kotlin")
-// Prefer rustup's cargo (Homebrew's rustc has no Android targets).
-val cargoPath = listOf(System.getProperty("user.home") + "/.cargo/bin", System.getenv("PATH") ?: "")
-  .joinToString(File.pathSeparator)
+// Prefer rustup's cargo (Homebrew's rustc has no Android targets and no +toolchain).
+val cargoHome = System.getenv("CARGO_HOME") ?: (System.getProperty("user.home") + "/.cargo")
+val cargoPath = listOf("$cargoHome/bin", System.getenv("PATH") ?: "").joinToString(File.pathSeparator)
 val rustAbis = (findProperty("rustAbis") as String? ?: "arm64-v8a,armeabi-v7a,x86_64").split(",")
+
+fun androidSdkDir(): File? {
+  val local = loadProperties(rootProject.file("local.properties")).getProperty("sdk.dir")
+  return (local ?: System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT"))?.let(::File)
+}
+
+val ndkHome: String? =
+  System.getenv("ANDROID_NDK_HOME") ?: androidSdkDir()?.resolve("ndk/$pinnedNdk")?.takeIf { it.isDirectory }?.path
+
+// Absolute paths must not end up in the binaries.
+val rustFlags = listOf(
+  "--remap-path-prefix=${repoRoot.path}=/src",
+  "--remap-path-prefix=$cargoHome=/cargo",
+).joinToString("\u001f")
 
 val cargoBuildAndroid by tasks.registering(Exec::class) {
   group = "rust"
   description = "Builds the Rust FFI library for Android ABIs"
   workingDir = repoRoot
   environment("PATH", cargoPath)
+  environment("CARGO_ENCODED_RUSTFLAGS", rustFlags)
+  environment("SOURCE_DATE_EPOCH", "0")
+  // Not `cargo +toolchain`: cargo-ndk re-invokes the real cargo binary, which ignores `+`.
+  environment("RUSTUP_TOOLCHAIN", rustToolchain)
+  ndkHome?.let { environment("ANDROID_NDK_HOME", it) }
   val args = mutableListOf("cargo", "ndk", "-P", "26", "-o", rustJniLibs.get().asFile.path)
   rustAbis.forEach { args += listOf("-t", it) }
   args += listOf("build", "-p", "launcher-tags-ffi", "--release", "--locked")
   commandLine(args)
   inputs.dir(File(repoRoot, "crates"))
   inputs.file(File(repoRoot, "Cargo.lock"))
+  inputs.property("rustToolchain", rustToolchain)
+  inputs.property("rustAbis", rustAbis)
   outputs.dir(rustJniLibs)
 }
 
@@ -37,6 +83,7 @@ val uniffiBindgen by tasks.registering(Exec::class) {
   dependsOn(cargoBuildAndroid)
   workingDir = repoRoot
   environment("PATH", cargoPath)
+  environment("RUSTUP_TOOLCHAIN", rustToolchain)
   val lib = rustJniLibs.get().file("${rustAbis.first()}/liblauncher_tags_ffi.so").asFile.path
   commandLine(
     "cargo", "run", "--locked", "-q", "-p", "launcher-tags-ffi", "--features", "bindgen",
@@ -52,12 +99,13 @@ tasks.named("preBuild") { dependsOn(uniffiBindgen) }
 android {
   namespace = "cz.jancejka.launchertagssync"
   compileSdk = 37
+  ndkVersion = pinnedNdk
   defaultConfig {
     applicationId = "cz.jancejka.launchertagssync"
     minSdk = 26
     targetSdk = 37
-    versionCode = 1
-    versionName = "0.3.0"
+    versionCode = appVersionCode
+    versionName = appVersion
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     ndk { abiFilters += rustAbis }
   }
@@ -69,8 +117,29 @@ android {
     }
   }
 
+  signingConfigs {
+    if (releaseStoreFile != null) {
+      create("release") {
+        storeFile = file(releaseStoreFile)
+        storePassword = signing("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+        keyAlias = signing("keyAlias", "ANDROID_KEY_ALIAS")
+        keyPassword = signing("keyPassword", "ANDROID_KEYSTORE_PASSWORD")
+        enableV1Signing = false
+        enableV2Signing = true
+        enableV3Signing = true
+      }
+    }
+  }
+
+  // No Google dependency-metadata blob in the APK (F-Droid policy, reproducibility).
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = false
+  }
+
   buildTypes {
     release {
+      signingConfig = signingConfigs.findByName("release")
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
