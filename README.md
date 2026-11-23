@@ -202,5 +202,4 @@ Upstream revisions the formats were verified against: [`docs/SOURCES.md`](docs/S
 
 ## License
 
-Proposed: MIT OR Apache-2.0 (to be confirmed before publishing). Not affiliated with
-Kvaesitso or Quick Search.
+[MIT](LICENSE). Not affiliated with Kvaesitso or Quick Search.

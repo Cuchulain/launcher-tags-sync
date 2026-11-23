@@ -5,6 +5,9 @@ All notable changes to this project are documented here. Format:
 
 ## [Unreleased]
 
+### Changed
+- License: MIT (`LICENSE`).
+
 ### Added
 - `sync --direction both` (v0.2): three-way bidirectional sync of Kvaesitso app tags and
   Quick Search app nicknames against a `--state` file, propagating additions and deletions;
