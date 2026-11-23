@@ -21,6 +21,7 @@ pub mod kvaesitso_write;
 pub mod merge;
 pub mod quicksearch;
 pub mod report;
+pub mod run;
 mod warning;
 
 pub use error::Error;

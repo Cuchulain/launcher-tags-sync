@@ -40,4 +40,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.88.0"
-      - run: cargo test --workspace --locked
+      # The MSRV covers the library and the CLI; the Android FFI crate follows stable.
+      - run: cargo test -p launcher-tags-core -p launcher-tags-cli --locked

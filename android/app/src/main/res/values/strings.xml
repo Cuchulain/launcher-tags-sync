@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">Launcher Tags Sync</string>
+
+    <!-- Home -->
+    <string name="home_intro">Turns Kvaesitso app tags into Quick Search app nicknames, so an app tagged “music” is found by typing “music”. Everything happens offline on backup files; your apps are not modified directly.</string>
+    <string name="mode_title">Direction</string>
+    <string name="mode_one_way">Kvaesitso → Quick Search</string>
+    <string name="mode_one_way_desc">Adds tags as nicknames. Never removes anything and never changes Kvaesitso.</string>
+    <string name="mode_two_way">Both ways</string>
+    <string name="mode_two_way_desc">Keeps tags and nicknames in sync in both directions, including deletions. Produces backups for both apps.</string>
+    <string name="state_none">Two-way sync not started yet. The first run combines both sides and deletes nothing.</string>
+    <string name="state_present">Two-way sync is set up. Deletions since the last sync will be applied to the other app.</string>
+    <string name="state_reset">Reset two-way sync</string>
+    <string name="state_reset_confirm_title">Reset two-way sync?</string>
+    <string name="state_reset_confirm_text">The next two-way run will start over by combining both sides. Nothing in your apps changes now.</string>
+    <string name="start">Start</string>
+    <string name="history">History</string>
+    <string name="cancel">Cancel</string>
+    <string name="reset">Reset</string>
+    <string name="about">Core %1$s · MIT License · not affiliated with Kvaesitso or Quick Search</string>
+
+    <!-- Wizard -->
+    <string name="step_of">Step %1$d of %2$d</string>
+    <string name="back">Back</string>
+    <string name="next">Next</string>
+    <string name="done">Done</string>
+    <string name="open_app">Open %1$s</string>
+    <string name="app_not_installed">%1$s is not installed on this device.</string>
+
+    <string name="export_k_title">Export your Kvaesitso backup</string>
+    <string name="export_k_steps">1. Open Kvaesitso and go to Settings → Backup.\n2. Create a backup and save the .kvaesitso file.\n3. Come back here and select that file.</string>
+    <string name="export_q_title">Export your Quick Search backup</string>
+    <string name="export_q_steps">1. Open Quick Search and go to Settings → Backup.\n2. Export a backup with “Settings” selected and save the .quicksearch file.\n3. Come back here and select that file.\n\nKeep this export: it is your way back if anything goes wrong.</string>
+    <string name="pick_file">Select backup file</string>
+    <string name="pick_other_file">Select a different file</string>
+    <string name="k_info">%1$s\nApp tags: %2$d on %3$d apps · pages: %4$d · shortcut tags ignored: %5$d</string>
+    <string name="q_info">%1$s\nApp nicknames: %2$d (+%3$d in work/clone profiles)</string>
+    <string name="exported_at">Exported %1$s</string>
+    <string name="format_line">Backup format %1$s, app version %2$s</string>
+
+    <string name="preview_title">Review the changes</string>
+    <string name="preview_initial">First two-way sync: both sides are combined, nothing is deleted.</string>
+    <string name="preview_nothing">Everything is already in sync. Nothing to do.</string>
+    <string name="preview_to_q">Quick Search: %1$d app(s)</string>
+    <string name="preview_to_k">Kvaesitso: %1$d app(s)</string>
+    <string name="preview_summary_one_way">%1$d new and %2$d extended nicknames, %3$d aliases added.</string>
+    <string name="preview_deletions">%1$d alias(es) will be deleted.</string>
+    <string name="change_line">+%1$d  −%2$d</string>
+    <string name="added">Add: %1$s</string>
+    <string name="removed">Remove: %1$s</string>
+    <string name="new_entry">new</string>
+    <string name="conflicts">Conflicts (nothing deleted)</string>
+    <string name="unresolvable">%1$d app(s) are unknown to the Kvaesitso backup, so their nicknames cannot become tags yet. They are retried next time.</string>
+    <string name="warnings">Warnings</string>
+    <string name="pending_note">Note: %1$s</string>
+
+    <string name="error_title">Cannot continue</string>
+    <string name="error_stale">This export looks older than the one used for the previous sync. Please export a fresh backup.</string>
+    <string name="error_pending">The backups produced last time seem not to have been imported.</string>
+    <string name="error_mass_delete">This would delete many aliases at once. Please review whether that is intended.</string>
+    <string name="error_settings">The Quick Search backup was exported without “Settings”, so nicknames would be ignored on import. Export again with Settings selected.</string>
+    <string name="error_type">A Quick Search nickname entry has an unexpected format and is not overwritten.</string>
+    <string name="error_invalid">The file is not a supported backup.</string>
+    <string name="error_state">The saved sync state is damaged. Reset two-way sync on the home screen.</string>
+    <string name="error_other">Something went wrong.</string>
+    <string name="action_use_anyway">Use this export anyway</string>
+    <string name="action_discard">I did not import them – plan again</string>
+    <string name="action_accept">I undid those changes on purpose</string>
+    <string name="action_allow_delete">Allow these deletions</string>
+    <string name="dismiss">OK</string>
+
+    <string name="save_title">Save the new backups</string>
+    <string name="save_text">Save the generated backup(s), e.g. to Downloads. Nothing is imported yet.</string>
+    <string name="save_q">Save Quick Search backup</string>
+    <string name="save_k">Save Kvaesitso backup</string>
+    <string name="saved">Saved ✓</string>
+    <string name="save_nothing">No backup needs to be saved.</string>
+
+    <string name="import_title">Import into your apps</string>
+    <string name="import_q">Quick Search: Settings → Backup → Import, then select the saved .quicksearch file.</string>
+    <string name="import_k">Kvaesitso: Settings → Backup → Restore, then select the saved .kvaesitso file.\n\nRestoring replaces all Kvaesitso data with the backup, so do it right away, before changing anything else in Kvaesitso.</string>
+    <string name="import_both_needed">Import both backups before the next sync. Otherwise the next sync will notice and ask you.</string>
+    <string name="import_nothing">Nothing to import. You are done.</string>
+
+    <!-- History -->
+    <string name="history_empty">No runs yet.</string>
+    <string name="history_one_way">One-way</string>
+    <string name="history_two_way">Two-way</string>
+    <string name="history_two_way_initial">Two-way (first)</string>
+    <string name="history_line">QS %1$d · Kvaesitso %2$d · +%3$d aliases · −%4$d · conflicts %5$d</string>
+</resources>

@@ -4,11 +4,8 @@ use std::io::Cursor;
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use launcher_tags_core::bisync::{
-    self, InputInfo, Options, PendingCheck, PendingPolicy, Plan, SyncState,
-};
-use launcher_tags_core::quicksearch::QuickSearchBackup;
-use launcher_tags_core::report::BisyncReport;
+use launcher_tags_core::bisync::{self, Options, PendingCheck, PendingPolicy, Plan};
+use launcher_tags_core::run::{self, BothSettings};
 use launcher_tags_core::{kvaesitso, Limits, SourceTags};
 
 use crate::{fsio, print_warnings, PendingArg, SyncArgs};
@@ -70,60 +67,43 @@ pub(crate) fn run(a: SyncArgs) -> Result<()> {
         fsio::check_writable("report", r, &protected, a.force)?;
     }
 
-    // ---- read
-    let limits = Limits::default();
+    // ---- read + compute in memory
     let kbytes = fsio::read_limited(&a.kvaesitso, MAX_KVAESITSO_BYTES, "Kvaesitso backup")?;
-    let source = kvaesitso::read(Cursor::new(&kbytes), &limits)
-        .with_context(|| format!("cannot read Kvaesitso backup {}", a.kvaesitso.display()))?;
     let qraw = fsio::read_limited(
         &a.quicksearch,
         fsio::MAX_QUICKSEARCH_BYTES,
         "Quick Search backup",
     )?;
-    let target = QuickSearchBackup::parse(&qraw)
-        .with_context(|| format!("cannot use Quick Search backup {}", a.quicksearch.display()))?;
-    let state = if a.init_state {
+    let state_raw = if a.init_state {
         None
     } else {
-        let b = fsio::read_limited(state_path, MAX_STATE_BYTES, "state file")?;
-        Some(
-            SyncState::parse(&b)
-                .with_context(|| format!("cannot use state file {}", state_path.display()))?,
-        )
+        Some(fsio::read_limited(
+            state_path,
+            MAX_STATE_BYTES,
+            "state file",
+        )?)
     };
-
-    // ---- plan + apply in memory
-    let opts = Options {
-        pending: match a.pending {
-            PendingArg::Error => PendingPolicy::Error,
-            PendingArg::Discard => PendingPolicy::Discard,
-            PendingArg::Accept => PendingPolicy::Accept,
+    let settings = BothSettings {
+        options: Options {
+            pending: match a.pending {
+                PendingArg::Error => PendingPolicy::Error,
+                PendingArg::Discard => PendingPolicy::Discard,
+                PendingArg::Accept => PendingPolicy::Accept,
+            },
+            allow_mass_delete: a.allow_mass_delete,
         },
-        allow_mass_delete: a.allow_mass_delete,
+        allow_stale: a.allow_stale,
+        dry_run: a.dry_run,
     };
-    let k_info = InputInfo {
-        fingerprint: bisync::fingerprint(&kbytes),
-        exported_at_ms: source.meta.as_ref().and_then(|m| m.timestamp),
-    };
-    let q_info = InputInfo {
-        fingerprint: bisync::fingerprint(&qraw),
-        exported_at_ms: target.exported_at_ms(),
-    };
-    bisync::check_freshness(state.as_ref(), &k_info, &q_info, a.allow_stale)
-        .context("sync refused")?;
-    let mut plan = bisync::plan(&source, &target, state.as_ref(), &opts).context("sync failed")?;
-    let mut merged = target.clone();
-    bisync::apply_quicksearch(&plan, &mut merged)?;
-    let qbytes = merged.to_pretty_bytes()?;
-    let kout_bytes = if plan.to_kvaesitso.is_empty() {
-        kbytes.clone()
-    } else {
-        bisync::apply_kvaesitso(&plan, &source, Cursor::new(&kbytes), &limits)
-            .context("cannot produce the Kvaesitso backup")?
-            .0
-    };
-    bisync::record_run(&mut plan, &k_info, &kout_bytes, &q_info, &qbytes);
-    let report = BisyncReport::build(&source, &plan, a.dry_run);
+    let run::Both {
+        source,
+        plan,
+        quicksearch: qbytes,
+        kvaesitso: kout_bytes,
+        state: state_bytes,
+        report,
+    } = run::both(&kbytes, &qraw, state_raw.as_deref(), &settings).context("sync refused")?;
+    let limits = Limits::default();
 
     print_warnings(&source);
     print_plan(&source, &plan, a.dry_run, a.show_aliases);
@@ -156,7 +136,7 @@ pub(crate) fn run(a: SyncArgs) -> Result<()> {
             let old = std::fs::read(state_path)?;
             fsio::write_atomic(&prev, &old, true)?;
         }
-        fsio::write_atomic(state_path, &plan.new_state.to_pretty_bytes(), state_exists)?;
+        fsio::write_atomic(state_path, &state_bytes, state_exists)?;
         println!("Updated state {}", state_path.display());
         println!("Next: import BOTH generated backups on the phone before the next sync.");
     }

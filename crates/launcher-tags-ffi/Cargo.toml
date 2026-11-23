@@ -1,0 +1,26 @@
+[package]
+name = "launcher-tags-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "UniFFI bindings (Kotlin/Android) for launcher-tags-core"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "launcher_tags_ffi"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+launcher-tags-core = { path = "../launcher-tags-core" }
+serde_json.workspace = true
+thiserror.workspace = true
+uniffi = "0.32"

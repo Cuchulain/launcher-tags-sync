@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/launcher-tags-core", "crates/launcher-tags-cli"]
+members = ["crates/launcher-tags-core", "crates/launcher-tags-cli", "crates/launcher-tags-ffi"]
 
 [workspace.package]
 version = "0.1.0"

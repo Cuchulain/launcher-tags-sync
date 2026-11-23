@@ -1,0 +1,86 @@
+<resources>
+    <string name="home_intro">Převádí tagy aplikací z Kvaesitso na přezdívky aplikací v Quick Search, takže aplikaci s tagem „hudba“ najdeš napsáním „hudba“. Vše probíhá offline nad zálohami; aplikace se přímo nemění.</string>
+    <string name="mode_title">Směr</string>
+    <string name="mode_one_way">Kvaesitso → Quick Search</string>
+    <string name="mode_one_way_desc">Přidá tagy jako přezdívky. Nic nemaže a Kvaesitso nemění.</string>
+    <string name="mode_two_way">Obousměrně</string>
+    <string name="mode_two_way_desc">Udržuje tagy a přezdívky v souladu oběma směry včetně mazání. Vytvoří zálohy pro obě aplikace.</string>
+    <string name="state_none">Obousměrná synchronizace ještě nezačala. První běh obě strany sloučí a nic nesmaže.</string>
+    <string name="state_present">Obousměrná synchronizace je nastavená. Co od minula smažeš na jedné straně, smaže se i na druhé.</string>
+    <string name="state_reset">Resetovat obousměrnou synchronizaci</string>
+    <string name="state_reset_confirm_title">Resetovat obousměrnou synchronizaci?</string>
+    <string name="state_reset_confirm_text">Příští obousměrný běh začne znovu sloučením obou stran. V aplikacích se teď nic nezmění.</string>
+    <string name="start">Začít</string>
+    <string name="history">Historie</string>
+    <string name="cancel">Zrušit</string>
+    <string name="reset">Resetovat</string>
+    <string name="about">Jádro %1$s · licence MIT · nesouvisí s autory Kvaesitso ani Quick Search</string>
+
+    <string name="step_of">Krok %1$d z %2$d</string>
+    <string name="back">Zpět</string>
+    <string name="next">Další</string>
+    <string name="done">Hotovo</string>
+    <string name="open_app">Otevřít %1$s</string>
+    <string name="app_not_installed">%1$s v tomto zařízení není nainstalované.</string>
+
+    <string name="export_k_title">Exportuj zálohu Kvaesitso</string>
+    <string name="export_k_steps">1. Otevři Kvaesitso a jdi do Nastavení → Záloha.\n2. Vytvoř zálohu a ulož soubor .kvaesitso.\n3. Vrať se sem a vyber ho.</string>
+    <string name="export_q_title">Exportuj zálohu Quick Search</string>
+    <string name="export_q_steps">1. Otevři Quick Search a jdi do Nastavení → Záloha.\n2. Exportuj zálohu se zaškrtnutým „Nastavení“ a ulož soubor .quicksearch.\n3. Vrať se sem a vyber ho.\n\nTento export si nech: je to tvoje cesta zpět, kdyby se něco pokazilo.</string>
+    <string name="pick_file">Vybrat soubor zálohy</string>
+    <string name="pick_other_file">Vybrat jiný soubor</string>
+    <string name="k_info">%1$s\nTagy aplikací: %2$d u %3$d aplikací · stránek: %4$d · ignorované tagy zástupců: %5$d</string>
+    <string name="q_info">%1$s\nPřezdívky aplikací: %2$d (+%3$d v pracovních/klonovaných profilech)</string>
+    <string name="exported_at">Exportováno %1$s</string>
+    <string name="format_line">Formát zálohy %1$s, verze aplikace %2$s</string>
+
+    <string name="preview_title">Zkontroluj změny</string>
+    <string name="preview_initial">První obousměrná synchronizace: obě strany se sloučí, nic se nesmaže.</string>
+    <string name="preview_nothing">Vše už je v souladu. Není co dělat.</string>
+    <string name="preview_to_q">Quick Search: %1$d aplikací</string>
+    <string name="preview_to_k">Kvaesitso: %1$d aplikací</string>
+    <string name="preview_summary_one_way">%1$d nových a %2$d rozšířených přezdívek, přidáno %3$d aliasů.</string>
+    <string name="preview_deletions">Smaže se %1$d aliasů.</string>
+    <string name="change_line">+%1$d  −%2$d</string>
+    <string name="added">Přidat: %1$s</string>
+    <string name="removed">Odebrat: %1$s</string>
+    <string name="new_entry">nová</string>
+    <string name="conflicts">Konflikty (nic se nesmaže)</string>
+    <string name="unresolvable">%1$d aplikací záloha Kvaesitso nezná, takže jejich přezdívky zatím nemohou být tagy. Zkusí se to příště.</string>
+    <string name="warnings">Upozornění</string>
+    <string name="pending_note">Poznámka: %1$s</string>
+
+    <string name="error_title">Nelze pokračovat</string>
+    <string name="error_stale">Tento export vypadá starší než ten z minulé synchronizace. Exportuj prosím čerstvou zálohu.</string>
+    <string name="error_pending">Zálohy vytvořené minule zřejmě nebyly naimportované.</string>
+    <string name="error_mass_delete">Smazalo by se najednou hodně aliasů. Zkontroluj, jestli je to záměr.</string>
+    <string name="error_settings">Záloha Quick Search byla exportována bez „Nastavení“, přezdívky by se při importu ignorovaly. Exportuj znovu s Nastavením.</string>
+    <string name="error_type">Položka přezdívky v Quick Search má neočekávaný formát a nebude přepsána.</string>
+    <string name="error_invalid">Soubor není podporovaná záloha.</string>
+    <string name="error_state">Uložený stav synchronizace je poškozený. Resetuj obousměrnou synchronizaci na úvodní obrazovce.</string>
+    <string name="error_other">Něco se pokazilo.</string>
+    <string name="action_use_anyway">Přesto použít tento export</string>
+    <string name="action_discard">Neimportoval jsem je – naplánovat znovu</string>
+    <string name="action_accept">Ty změny jsem vrátil záměrně</string>
+    <string name="action_allow_delete">Povolit tato smazání</string>
+    <string name="dismiss">OK</string>
+
+    <string name="save_title">Ulož nové zálohy</string>
+    <string name="save_text">Ulož vytvořené zálohy, třeba do Stažených souborů. Zatím se nic neimportuje.</string>
+    <string name="save_q">Uložit zálohu Quick Search</string>
+    <string name="save_k">Uložit zálohu Kvaesitso</string>
+    <string name="saved">Uloženo ✓</string>
+    <string name="save_nothing">Není potřeba ukládat žádnou zálohu.</string>
+
+    <string name="import_title">Importuj do aplikací</string>
+    <string name="import_q">Quick Search: Nastavení → Záloha → Import a vyber uložený soubor .quicksearch.</string>
+    <string name="import_k">Kvaesitso: Nastavení → Záloha → Obnovit a vyber uložený soubor .kvaesitso.\n\nObnova nahradí všechna data Kvaesitso obsahem zálohy, proto ji udělej hned a v Kvaesitso mezitím nic neměň.</string>
+    <string name="import_both_needed">Před další synchronizací naimportuj obě zálohy. Jinak si toho příští synchronizace všimne a zeptá se.</string>
+    <string name="import_nothing">Není co importovat. Hotovo.</string>
+
+    <string name="history_empty">Zatím žádné běhy.</string>
+    <string name="history_one_way">Jednosměrně</string>
+    <string name="history_two_way">Obousměrně</string>
+    <string name="history_two_way_initial">Obousměrně (první)</string>
+    <string name="history_line">QS %1$d · Kvaesitso %2$d · +%3$d aliasů · −%4$d · konflikty %5$d</string>
+</resources>
