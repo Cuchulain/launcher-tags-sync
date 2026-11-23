@@ -50,10 +50,22 @@ fun androidSdkDir(): File? {
 val ndkHome: String? =
   System.getenv("ANDROID_NDK_HOME") ?: androidSdkDir()?.resolve("ndk/$pinnedNdk")?.takeIf { it.isDirectory }?.path
 
-// Absolute paths must not end up in the binaries.
+// Absolute paths must not end up in the binaries (privacy + reproducibility). Besides the
+// checkout and cargo home this includes the toolchain's rust-src: when that component is
+// installed, std panic locations point into it instead of the usual /rustc/<commit>/.
+fun rustc(vararg args: String): String =
+  providers.exec {
+    commandLine("rustc", *args)
+    environment("PATH", cargoPath)
+    environment("RUSTUP_TOOLCHAIN", rustToolchain)
+  }.standardOutput.asText.get().trim()
+
+val rustSysroot = rustc("--print", "sysroot")
+val rustCommit = Regex("(?m)^commit-hash: (\\S+)").find(rustc("-vV"))?.groupValues?.get(1) ?: "unknown"
 val rustFlags = listOf(
   "--remap-path-prefix=${repoRoot.path}=/src",
   "--remap-path-prefix=$cargoHome=/cargo",
+  "--remap-path-prefix=$rustSysroot/lib/rustlib/src/rust=/rustc/$rustCommit",
 ).joinToString("\u001f")
 
 val cargoBuildAndroid by tasks.registering(Exec::class) {
