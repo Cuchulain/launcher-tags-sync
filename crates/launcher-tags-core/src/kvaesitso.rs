@@ -4,7 +4,7 @@
 //! Every member name is still checked for path traversal and every declared size counts
 //! against the limits, so hostile archives are rejected as a whole.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{Read, Seek};
 use std::path::Path;
 
@@ -47,6 +47,8 @@ impl Default for Limits {
 pub struct SourceMeta {
     pub format: Option<String>,
     pub version_name: Option<String>,
+    /// Backup creation time (ms since epoch), if present.
+    pub timestamp: Option<i64>,
 }
 
 /// Tags for one Android package, in first-seen order, de-duplicated, trimmed.
@@ -88,16 +90,36 @@ pub struct SourceTags {
     pub packages: Vec<PackageTags>,
     pub stats: SourceStats,
     pub warnings: Vec<Warning>,
+    /// Main-profile component key (`app://pkg:Class`) per package, usable for writing new
+    /// tags: a key present in `favorites.*` is preferred (Kvaesitso resolves tagged items
+    /// there), otherwise the first existing tag key.
+    pub components: BTreeMap<String, String>,
+    /// Packages that appear anywhere in customizations or favorites (any record type).
+    pub present_packages: BTreeSet<String>,
 }
 
-/// Read a `.kvaesitso` file.
-pub fn read_file(path: impl AsRef<Path>, limits: &Limits) -> Result<SourceTags, Error> {
-    let file = std::fs::File::open(path)?;
-    read(std::io::BufReader::new(file), limits)
+impl SourceTags {
+    /// Whether the backup contains any trace of `package`.
+    pub fn is_present(&self, package: &str) -> bool {
+        self.present_packages.contains(package)
+            || self.packages.iter().any(|p| p.package == package)
+    }
 }
 
-/// Read a Kvaesitso ZIP backup from any seekable reader.
-pub fn read<R: Read + Seek>(reader: R, limits: &Limits) -> Result<SourceTags, Error> {
+/// Indexes of interesting members, after safety checks of every member.
+pub(crate) struct Scan {
+    pub meta: Option<usize>,
+    pub customizations: BTreeMap<u64, usize>,
+    pub favorites: BTreeMap<u64, usize>,
+    /// Members whose name starts with `customizations.` but is not `customizations.NNNN`
+    /// (Kvaesitso's restore would still import them).
+    pub stray_customizations: usize,
+}
+
+pub(crate) fn open_archive<R: Read + Seek>(
+    reader: R,
+    limits: &Limits,
+) -> Result<(zip::ZipArchive<R>, Scan), Error> {
     let mut archive = zip::ZipArchive::new(reader).map_err(|e| Error::Zip(e.to_string()))?;
     if archive.len() > limits.max_entries {
         return Err(Error::ArchiveLimit(format!(
@@ -106,9 +128,12 @@ pub fn read<R: Read + Seek>(reader: R, limits: &Limits) -> Result<SourceTags, Er
             limits.max_entries
         )));
     }
-
-    let mut meta_index = None;
-    let mut page_index: BTreeMap<u64, usize> = BTreeMap::new();
+    let mut scan = Scan {
+        meta: None,
+        customizations: BTreeMap::new(),
+        favorites: BTreeMap::new(),
+        stray_customizations: 0,
+    };
     let mut declared_total: u64 = 0;
     for i in 0..archive.len() {
         let entry = archive
@@ -126,21 +151,49 @@ pub fn read<R: Read + Seek>(reader: R, limits: &Limits) -> Result<SourceTags, Er
             )));
         }
         if name == "meta" {
-            if meta_index.replace(i).is_some() {
+            if scan.meta.replace(i).is_some() {
                 return Err(Error::Schema("duplicate 'meta' member".into()));
             }
-        } else if let Some(page) = parse_page_name(&name)? {
-            if page_index.insert(page, i).is_some() {
+        } else if let Some(page) = parse_page_name("customizations.", &name)? {
+            if scan.customizations.insert(page, i).is_some() {
                 return Err(Error::Schema(format!(
                     "ambiguous customizations page number {page}"
                 )));
             }
+        } else if name.starts_with("customizations.") {
+            scan.stray_customizations += 1;
+        } else if let Some(page) = parse_page_name("favorites.", &name)? {
+            if scan.favorites.insert(page, i).is_some() {
+                return Err(Error::Schema(format!(
+                    "ambiguous favorites page number {page}"
+                )));
+            }
         }
     }
+    Ok((archive, scan))
+}
 
+/// Read a `.kvaesitso` file.
+pub fn read_file(path: impl AsRef<Path>, limits: &Limits) -> Result<SourceTags, Error> {
+    let file = std::fs::File::open(path)?;
+    read(std::io::BufReader::new(file), limits)
+}
+
+/// Read a Kvaesitso ZIP backup from any seekable reader.
+pub fn read<R: Read + Seek>(reader: R, limits: &Limits) -> Result<SourceTags, Error> {
+    let (mut archive, scan) = open_archive(reader, limits)?;
     let mut read_total: u64 = 0;
     let mut warnings = Vec::new();
-    let meta = match meta_index {
+    if scan.stray_customizations > 0 {
+        warnings.push(Warning::new(
+            WarningCategory::UnexpectedMember,
+            format!(
+                "{} member(s) start with 'customizations.' but are not customizations.NNNN; ignored here, although Kvaesitso's restore would read them",
+                scan.stray_customizations
+            ),
+        ));
+    }
+    let meta = match scan.meta {
         Some(i) => {
             let bytes = read_member(
                 &mut archive,
@@ -160,29 +213,94 @@ pub fn read<R: Read + Seek>(reader: R, limits: &Limits) -> Result<SourceTags, Er
         }
     };
 
-    if page_index.is_empty() {
+    if scan.customizations.is_empty() {
         return Err(Error::NoCustomizations);
     }
 
-    let mut pages = Vec::with_capacity(page_index.len());
-    for (&page, &i) in &page_index {
-        let bytes = read_member(
-            &mut archive,
-            i,
-            limits.max_member_bytes,
-            &mut read_total,
-            limits,
-        )?;
-        let value: Value = serde_json::from_slice(&bytes)
-            .map_err(|e| Error::json(format!("customizations.{page:04}"), &e))?;
-        pages.push((page, value));
-    }
+    let pages = read_pages(
+        &mut archive,
+        &scan.customizations,
+        "customizations",
+        &mut read_total,
+        limits,
+    )?;
 
     let mut tags = SourceTags::from_pages(pages)?;
     tags.meta = meta;
     warnings.append(&mut tags.warnings);
+
+    // favorites.NNNN: only `key` fields are used (component keys, package presence).
+    let mut favorite_keys: BTreeMap<String, String> = BTreeMap::new();
+    let mut unreadable_favorites = 0usize;
+    for (_, value) in read_pages_lenient(&mut archive, &scan.favorites, &mut read_total, limits)? {
+        let Some(records) = value.as_array() else {
+            unreadable_favorites += 1;
+            continue;
+        };
+        for rec in records {
+            let Some(key) = rec.get("key").and_then(Value::as_str) else {
+                continue;
+            };
+            if let Some(pkg) = key_package(key) {
+                tags.present_packages.insert(pkg.to_string());
+            }
+            if let Some(AppKey::Main(pkg)) = parse_app_key(key) {
+                favorite_keys
+                    .entry(pkg.to_string())
+                    .or_insert_with(|| key.to_string());
+            }
+        }
+    }
+    if unreadable_favorites > 0 {
+        warnings.push(Warning::new(
+            WarningCategory::UnexpectedMember,
+            format!("{unreadable_favorites} favorites page(s) are not JSON arrays; ignored"),
+        ));
+    }
+    for (pkg, key) in favorite_keys {
+        tags.components.insert(pkg, key);
+    }
     tags.warnings = warnings;
     Ok(tags)
+}
+
+pub(crate) fn read_pages<R: Read + Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    index: &BTreeMap<u64, usize>,
+    prefix: &str,
+    read_total: &mut u64,
+    limits: &Limits,
+) -> Result<Vec<(u64, Value)>, Error> {
+    let mut pages = Vec::with_capacity(index.len());
+    for (&page, &i) in index {
+        let bytes = read_member(archive, i, limits.max_member_bytes, read_total, limits)?;
+        let value: Value = serde_json::from_slice(&bytes)
+            .map_err(|e| Error::json(format!("{prefix}.{page:04}"), &e))?;
+        pages.push((page, value));
+    }
+    Ok(pages)
+}
+
+/// Like [`read_pages`] but invalid JSON becomes `Value::Null` (limits still enforced).
+fn read_pages_lenient<R: Read + Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    index: &BTreeMap<u64, usize>,
+    read_total: &mut u64,
+    limits: &Limits,
+) -> Result<Vec<(u64, Value)>, Error> {
+    let mut pages = Vec::with_capacity(index.len());
+    for (&page, &i) in index {
+        let bytes = read_member(archive, i, limits.max_member_bytes, read_total, limits)?;
+        pages.push((page, serde_json::from_slice(&bytes).unwrap_or(Value::Null)));
+    }
+    Ok(pages)
+}
+
+/// Package of any `app://pkg:…` key (any profile), for presence detection.
+fn key_package(key: &str) -> Option<&str> {
+    let rest = key.strip_prefix("app://")?;
+    let pkg = rest.split(':').next()?;
+    valid_package(pkg).then_some(pkg)
 }
 
 fn is_safe_member_name(name: &str) -> bool {
@@ -194,9 +312,9 @@ fn is_safe_member_name(name: &str) -> bool {
         && !(name.len() >= 2 && name.as_bytes()[1] == b':')
 }
 
-/// `customizations.` followed by ≥4 ASCII digits, nothing else.
-fn parse_page_name(name: &str) -> Result<Option<u64>, Error> {
-    let Some(digits) = name.strip_prefix("customizations.") else {
+/// `<prefix>` (e.g. `customizations.`) followed by ≥4 ASCII digits, nothing else.
+fn parse_page_name(prefix: &str, name: &str) -> Result<Option<u64>, Error> {
+    let Some(digits) = name.strip_prefix(prefix) else {
         return Ok(None);
     };
     if digits.len() < 4 || !digits.bytes().all(|b| b.is_ascii_digit()) {
@@ -266,6 +384,7 @@ fn parse_meta(bytes: &[u8], warnings: &mut Vec<Warning>) -> Result<SourceMeta, E
     let meta = SourceMeta {
         format: get_str("format")?,
         version_name: get_str("versionName")?,
+        timestamp: obj.get("timestamp").and_then(Value::as_i64),
     };
     match meta.format.as_deref() {
         Some(VERIFIED_FORMAT) => {}
@@ -290,14 +409,14 @@ fn parse_meta(bytes: &[u8], warnings: &mut Vec<Warning>) -> Result<SourceMeta, E
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum AppKey<'a> {
+pub(crate) enum AppKey<'a> {
     Main(&'a str),
     Profile(&'a str),
 }
 
 /// `app://<package>:<activity>` (main profile) or `app://<package>:<activity>:<serial>`
 /// (other profile; see Kvaesitso `LauncherApp.key`).
-fn parse_app_key(key: &str) -> Option<AppKey<'_>> {
+pub(crate) fn parse_app_key(key: &str) -> Option<AppKey<'_>> {
     let rest = key.strip_prefix("app://")?;
     let mut parts = rest.split(':');
     let package = parts.next()?;
@@ -318,7 +437,7 @@ fn parse_app_key(key: &str) -> Option<AppKey<'_>> {
 /// Conservative Android application-id check: ≥2 dot-separated Java-identifier-like ASCII
 /// labels. Packages starting with `shortcut_` are rejected because
 /// `nickname_app_shortcut_` is Quick Search's app-shortcut key namespace.
-fn valid_package(p: &str) -> bool {
+pub(crate) fn valid_package(p: &str) -> bool {
     let labels: Vec<&str> = p.split('.').collect();
     labels.len() >= 2
         && !p.starts_with("shortcut_")
@@ -355,6 +474,8 @@ impl SourceTags {
         let mut warnings = Vec::new();
         let mut packages: Vec<PackageTags> = Vec::new();
         let mut by_package: HashMap<String, (usize, HashSet<String>)> = HashMap::new();
+        let mut components: BTreeMap<String, String> = BTreeMap::new();
+        let mut present_packages: BTreeSet<String> = BTreeSet::new();
 
         for (page, value) in &pages {
             let page = *page;
@@ -377,6 +498,9 @@ impl SourceTags {
                     malformed(&mut stats, &mut warnings);
                     continue;
                 };
+                if let Some(pkg) = obj.get("key").and_then(Value::as_str).and_then(key_package) {
+                    present_packages.insert(pkg.to_string());
+                }
                 let Some(kind) = obj.get("type").and_then(Value::as_str) else {
                     malformed(&mut stats, &mut warnings);
                     continue;
@@ -426,7 +550,12 @@ impl SourceTags {
                         );
                         continue;
                     }
-                    Some(AppKey::Main(p)) => p,
+                    Some(AppKey::Main(p)) => {
+                        components
+                            .entry(p.to_string())
+                            .or_insert_with(|| key.to_string());
+                        p
+                    }
                 };
                 let tag = raw.trim();
                 if tag.is_empty() {
@@ -479,6 +608,8 @@ impl SourceTags {
             packages,
             stats,
             warnings,
+            components,
+            present_packages,
         })
     }
 }
@@ -518,10 +649,16 @@ mod tests {
 
     #[test]
     fn page_names() {
-        assert_eq!(parse_page_name("customizations.0000").unwrap(), Some(0));
-        assert_eq!(parse_page_name("customizations.0012").unwrap(), Some(12));
         assert_eq!(
-            parse_page_name("customizations.123456").unwrap(),
+            parse_page_name("customizations.", "customizations.0000").unwrap(),
+            Some(0)
+        );
+        assert_eq!(
+            parse_page_name("customizations.", "customizations.0012").unwrap(),
+            Some(12)
+        );
+        assert_eq!(
+            parse_page_name("customizations.", "customizations.123456").unwrap(),
             Some(123456)
         );
         for n in [
@@ -532,9 +669,13 @@ mod tests {
             "dir/customizations.0000",
             "customizations",
         ] {
-            assert_eq!(parse_page_name(n).unwrap(), None, "{n}");
+            assert_eq!(parse_page_name("customizations.", n).unwrap(), None, "{n}");
         }
-        assert!(parse_page_name(&format!("customizations.{}", "9".repeat(19))).is_err());
+        assert!(parse_page_name(
+            "customizations.",
+            &format!("customizations.{}", "9".repeat(19))
+        )
+        .is_err());
     }
 
     #[test]

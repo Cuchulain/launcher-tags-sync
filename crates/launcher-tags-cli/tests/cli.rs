@@ -331,3 +331,322 @@ fn help_states_one_way_direction() {
     let out = String::from_utf8_lossy(&o.stdout);
     assert!(out.contains("one-way") || out.contains("One-way"), "{out}");
 }
+
+// ---------------------------------------------------------------- v0.2 --direction both
+
+fn both(w: &Work, k: &str, q: &str, extra: &[&str]) -> Output {
+    let mut c = bin();
+    c.args(["sync", "--direction", "both", "--kvaesitso"])
+        .arg(w.p(k))
+        .arg("--quicksearch")
+        .arg(w.p(q));
+    for a in extra {
+        if a.starts_with('-') || ["discard", "accept", "error"].contains(a) {
+            c.arg(a);
+        } else {
+            c.arg(w.p(a));
+        }
+    }
+    c.output().unwrap()
+}
+
+fn kv_tags(p: &Path) -> std::collections::BTreeMap<String, Vec<String>> {
+    launcher_tags_core_tags(p)
+}
+
+/// Read tags through the public CLI (`inspect --json` has only counts), so parse the ZIP here.
+fn launcher_tags_core_tags(p: &Path) -> std::collections::BTreeMap<String, Vec<String>> {
+    let mut a = zip::ZipArchive::new(std::fs::File::open(p).unwrap()).unwrap();
+    let mut out: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    let names: Vec<String> = a.file_names().map(String::from).collect();
+    let mut pages: Vec<&String> = names
+        .iter()
+        .filter(|n| n.starts_with("customizations."))
+        .collect();
+    pages.sort();
+    for n in pages {
+        let mut s = String::new();
+        std::io::Read::read_to_string(&mut a.by_name(n).unwrap(), &mut s).unwrap();
+        for r in serde_json::from_str::<Vec<Value>>(&s).unwrap() {
+            let key = r["key"].as_str().unwrap_or("");
+            if r["type"] == "tag" && key.starts_with("app://") {
+                let pkg = key[6..].split(':').next().unwrap().to_string();
+                out.entry(pkg)
+                    .or_default()
+                    .push(r["value"].as_str().unwrap().to_string());
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn both_initial_then_noop_then_unimported_detection() {
+    let w = Work::new("basic");
+    let before = w.inputs_snapshot();
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &[
+            "--init-state",
+            "--state",
+            "state.json",
+            "--output",
+            "q1.quicksearch",
+            "--kvaesitso-output",
+            "k1.kvaesitso",
+            "--report",
+            "r1.json",
+        ],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    assert_eq!(before, w.inputs_snapshot());
+    let q1 = json_file(&w.p("q1.quicksearch"));
+    let prefs = &q1["preferences"]["user_app_preferences"];
+    assert_eq!(
+        prefs["nickname_app_org.example.reader"]["value"],
+        "e-book, čtení, Knihy"
+    );
+    assert_eq!(prefs["nickname_app_org.example.music:10"]["value"], "práce");
+    let k1 = kv_tags(&w.p("k1.kvaesitso"));
+    assert!(k1["org.example.reader"].contains(&"e-book".to_string()));
+    assert!(k1["org.example.maps"].contains(&"navigace".to_string()));
+    assert!(!k1.contains_key("org.example.unrelated"));
+    let r1 = json_file(&w.p("r1.json"));
+    assert_eq!(r1["initial_sync"], true);
+    assert_eq!(
+        r1["unresolvable_apps"],
+        serde_json::json!(["org.example.unrelated"])
+    );
+    let report_text = std::fs::read_to_string(w.p("r1.json")).unwrap();
+    assert!(!report_text.contains("e-book") && !report_text.contains("Knihy"));
+
+    // Second run on the imported outputs: nothing to do, state backup kept.
+    let o = both(
+        &w,
+        "k1.kvaesitso",
+        "q1.quicksearch",
+        &[
+            "--state",
+            "state.json",
+            "--output",
+            "q2.quicksearch",
+            "--kvaesitso-output",
+            "k2.kvaesitso",
+            "--report",
+            "r2.json",
+        ],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    let r2 = json_file(&w.p("r2.json"));
+    assert_eq!(r2["aliases_added_to_quicksearch"], 0);
+    assert_eq!(r2["tags_added_to_kvaesitso"], 0);
+    assert_eq!(r2["pending_quicksearch"], "imported");
+    assert!(w.p("state.json.prev").exists());
+    assert_eq!(json_file(&w.p("q2.quicksearch")), q1);
+
+    // Third run on the ORIGINAL exports with the new state: stale inputs -> refuse, nothing written.
+    let state_before = std::fs::read(w.p("state.json")).unwrap();
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &[
+            "--state",
+            "state.json",
+            "--output",
+            "q3.quicksearch",
+            "--kvaesitso-output",
+            "k3.kvaesitso",
+        ],
+    );
+    assert_eq!(o.status.code(), Some(1));
+    assert!(stderr(&o).contains("stale"), "{}", stderr(&o));
+    assert!(!w.p("q3.quicksearch").exists() && !w.p("k3.kvaesitso").exists());
+    assert_eq!(std::fs::read(w.p("state.json")).unwrap(), state_before);
+    // Forcing it shows that it would delete (that is why it is refused by default).
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &["--state", "state.json", "--allow-stale", "--dry-run"],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    assert!(!String::from_utf8_lossy(&o.stdout).contains(" 0 deletion(s)"));
+}
+
+/// Same content as the original exports but "exported later" (new timestamps).
+fn reexport_unchanged(w: &Work, k_name: &str, q_name: &str) {
+    let mut q = json_file(&w.p("input.quicksearch"));
+    q["exportedAtEpochMs"] = serde_json::json!(1_800_000_000_000i64);
+    std::fs::write(w.p(q_name), serde_json::to_vec_pretty(&q).unwrap()).unwrap();
+    let mut a = zip::ZipArchive::new(std::fs::File::open(w.p("input.kvaesitso")).unwrap()).unwrap();
+    let mut out = zip::ZipWriter::new(std::fs::File::create(w.p(k_name)).unwrap());
+    for i in 0..a.len() {
+        let mut f = a.by_index(i).unwrap();
+        let name = f.name().to_string();
+        let mut data = Vec::new();
+        std::io::Read::read_to_end(&mut f, &mut data).unwrap();
+        if name == "meta" {
+            let mut m: Value = serde_json::from_slice(&data).unwrap();
+            m["timestamp"] = serde_json::json!(1_800_000_000_000i64);
+            data = serde_json::to_vec(&m).unwrap();
+        }
+        out.start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        std::io::Write::write_all(&mut out, &data).unwrap();
+    }
+    out.finish().unwrap();
+}
+
+#[test]
+fn both_detects_outputs_that_were_never_imported() {
+    let w = Work::new("basic");
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &[
+            "--init-state",
+            "--state",
+            "st.json",
+            "--output",
+            "q1.quicksearch",
+            "--kvaesitso-output",
+            "k1.kvaesitso",
+        ],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    // The user forgot to import and exports again: fresh files without our changes.
+    reexport_unchanged(&w, "k2.kvaesitso", "q2.quicksearch");
+    let o = both(
+        &w,
+        "k2.kvaesitso",
+        "q2.quicksearch",
+        &[
+            "--state",
+            "st.json",
+            "--output",
+            "q3.quicksearch",
+            "--kvaesitso-output",
+            "k3.kvaesitso",
+        ],
+    );
+    assert_eq!(o.status.code(), Some(1));
+    assert!(stderr(&o).contains("never imported"), "{}", stderr(&o));
+    let o = both(
+        &w,
+        "k2.kvaesitso",
+        "q2.quicksearch",
+        &[
+            "--state",
+            "st.json",
+            "--output",
+            "q3.quicksearch",
+            "--kvaesitso-output",
+            "k3.kvaesitso",
+            "--pending",
+            "discard",
+        ],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    assert!(String::from_utf8_lossy(&o.stdout).contains(" 0 deletion(s)"));
+    let q3 = json_file(&w.p("q3.quicksearch"));
+    assert_eq!(
+        q3["preferences"]["user_app_preferences"]["nickname_app_org.example.reader"]["value"],
+        "e-book, čtení, Knihy"
+    );
+}
+
+#[test]
+fn both_argument_and_path_validation() {
+    let w = Work::new("basic");
+    // State required; must exist unless --init-state.
+    assert_eq!(
+        both(&w, "input.kvaesitso", "input.quicksearch", &["--dry-run"])
+            .status
+            .code(),
+        Some(1)
+    );
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &["--state", "missing.json", "--dry-run"],
+    );
+    assert!(stderr(&o).contains("--init-state"), "{}", stderr(&o));
+    // v0.2 flags rejected in one-way mode.
+    let o = w.sync(&["--dry-run", "--state", "s.json"]);
+    assert_eq!(o.status.code(), Some(1));
+    // Kvaesitso output must not be an input, even with --force.
+    let before = w.inputs_snapshot();
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &[
+            "--init-state",
+            "--state",
+            "s.json",
+            "--output",
+            "q.quicksearch",
+            "--kvaesitso-output",
+            "input.kvaesitso",
+            "--force",
+        ],
+    );
+    assert_eq!(o.status.code(), Some(1));
+    assert_eq!(before, w.inputs_snapshot());
+    // Outputs must differ from each other and from the state file.
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &[
+            "--init-state",
+            "--state",
+            "s.json",
+            "--output",
+            "x.out",
+            "--kvaesitso-output",
+            "x.out",
+        ],
+    );
+    assert_eq!(o.status.code(), Some(1));
+    std::fs::write(w.p("s.json"), b"{}").unwrap();
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &[
+            "--state",
+            "s.json",
+            "--output",
+            "s.json",
+            "--kvaesitso-output",
+            "k.kvaesitso",
+            "--force",
+        ],
+    );
+    assert_eq!(o.status.code(), Some(1));
+    assert_eq!(std::fs::read(w.p("s.json")).unwrap(), b"{}");
+    // --init-state with an existing state file is refused.
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &["--init-state", "--state", "s.json", "--dry-run"],
+    );
+    assert_eq!(o.status.code(), Some(1));
+    // Dry run writes nothing (no state either).
+    let o = both(
+        &w,
+        "input.kvaesitso",
+        "input.quicksearch",
+        &["--init-state", "--state", "new.json", "--dry-run"],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    assert!(!w.p("new.json").exists());
+    assert!(String::from_utf8_lossy(&o.stdout).contains("Initial sync"));
+}

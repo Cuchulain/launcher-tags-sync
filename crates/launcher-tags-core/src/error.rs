@@ -28,6 +28,21 @@ pub enum Error {
     #[error("Kvaesitso backup contains no customizations.NNNN members; refusing to produce a misleading result")]
     NoCustomizations,
 
+    #[error("the {side} backup shows none of the {count} change(s) written to it by the previous run; it was probably never imported. Import it first, or re-run with --pending discard (treat it as not imported) or --pending accept (treat this export as authoritative)")]
+    PendingNotImported { side: &'static str, count: usize },
+
+    #[error("refusing to delete {count} alias(es) in one run (limit {limit}); review with --dry-run and pass --allow-mass-delete if intended")]
+    MassDelete { count: usize, limit: usize },
+
+    #[error("the {side} input looks stale: {reason}. Use a fresh export (or pass --allow-stale to treat it as authoritative, which can delete aliases on the other side)")]
+    StaleInput {
+        side: &'static str,
+        reason: &'static str,
+    },
+
+    #[error("sync state: {0}")]
+    State(String),
+
     #[error("existing preference '{key}' is not a {{\"type\":\"string\",\"value\":\"...\"}} entry; refusing to overwrite it")]
     NicknameTypeCollision { key: String },
 }

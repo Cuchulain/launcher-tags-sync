@@ -75,6 +75,11 @@ impl QuickSearchBackup {
         Ok(bytes)
     }
 
+    /// `exportedAtEpochMs`, if present.
+    pub fn exported_at_ms(&self) -> Option<i64> {
+        self.root.get("exportedAtEpochMs").and_then(Value::as_i64)
+    }
+
     /// The `preferences.user_app_preferences` map (guaranteed present by validation).
     pub fn user_app_preferences(&self) -> &Map<String, Value> {
         self.root["preferences"][PREFS_FILE]

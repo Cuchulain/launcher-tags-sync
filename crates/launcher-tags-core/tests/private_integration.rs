@@ -81,3 +81,40 @@ fn private_backups_are_idempotent() {
     assert!(again.changes.is_empty());
     assert!(target.as_value() == &once);
 }
+
+#[test]
+#[ignore = "needs private backups in local-private/"]
+fn private_backups_bidirectional_initial_sync() {
+    use launcher_tags_core::bisync::{self, Options};
+    let k = path("LTS_PRIVATE_KVAESITSO", "kvaesitso.kvaesitso");
+    let q = path("LTS_PRIVATE_QUICKSEARCH", "quicksearch.quicksearch");
+    let kbytes = std::fs::read(&k).unwrap();
+    let lim = Limits::default();
+    let source = kvaesitso::read(std::io::Cursor::new(&kbytes), &lim).unwrap();
+    let target = QuickSearchBackup::parse(&std::fs::read(&q).unwrap()).unwrap();
+    let plan = bisync::plan(&source, &target, None, &Options::default()).unwrap();
+    let mut merged = target.clone();
+    bisync::apply_quicksearch(&plan, &mut merged).unwrap();
+    let (kout, stats) =
+        bisync::apply_kvaesitso(&plan, &source, std::io::Cursor::new(&kbytes), &lim).unwrap();
+    eprintln!(
+        "initial bisync: QS entries changed {}, KV packages changed {}, unresolvable apps {} ({} aliases), state packages {}, rewrite {:?}",
+        plan.to_quicksearch.len(),
+        plan.to_kvaesitso.len(),
+        plan.unresolvable.len(),
+        plan.unresolvable_aliases,
+        plan.new_state.packages.len(),
+        stats
+    );
+    assert_eq!(plan.removals(), 0);
+    // A follow-up run on the outputs must be a no-op.
+    let source2 = kvaesitso::read(std::io::Cursor::new(&kout), &lim).unwrap();
+    let plan2 = bisync::plan(
+        &source2,
+        &merged,
+        Some(&plan.new_state),
+        &Options::default(),
+    )
+    .unwrap();
+    assert!(plan2.is_noop());
+}

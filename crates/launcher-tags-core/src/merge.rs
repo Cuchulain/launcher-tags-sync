@@ -98,19 +98,12 @@ pub fn plan(source: &SourceTags, target: &QuickSearchBackup) -> Result<MergeOutc
         if added.is_empty() {
             continue;
         }
-        let joined = added.join(alias::JOINER);
-        let (kind, value) = match &previous {
-            None => (ChangeKind::New, joined),
-            Some(p) => {
-                let kept = p.trim_end_matches(|c: char| c == alias::SEPARATOR || c.is_whitespace());
-                let value = if kept.is_empty() {
-                    joined
-                } else {
-                    format!("{kept}{}{joined}", alias::JOINER)
-                };
-                (ChangeKind::Extended, value)
-            }
+        let kind = if previous.is_some() {
+            ChangeKind::Extended
+        } else {
+            ChangeKind::New
         };
+        let value = appended_value(previous.as_deref(), &added);
         match kind {
             ChangeKind::New => stats.new_entries += 1,
             ChangeKind::Extended => stats.extended_entries += 1,
@@ -131,6 +124,22 @@ pub fn plan(source: &SourceTags, target: &QuickSearchBackup) -> Result<MergeOutc
         stats,
         preserved_non_app_settings: true,
     })
+}
+
+/// `previous` with `added` aliases appended: the existing text is kept verbatim except for
+/// trailing whitespace/separators; a blank previous value is replaced.
+pub(crate) fn appended_value(previous: Option<&str>, added: &[String]) -> String {
+    let joined = added.join(alias::JOINER);
+    let kept = previous
+        .unwrap_or("")
+        .trim_end_matches(|c: char| c == alias::SEPARATOR || c.is_whitespace());
+    if kept.is_empty() {
+        joined
+    } else if joined.is_empty() {
+        kept.to_string()
+    } else {
+        format!("{kept}{}{joined}", alias::JOINER)
+    }
 }
 
 /// Plan and apply. On error the target is left unchanged.

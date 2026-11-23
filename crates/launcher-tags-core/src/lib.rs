@@ -14,8 +14,10 @@
 //! The semantics follow `docs/SEMANTICS.md` of this repository.
 
 pub mod alias;
+pub mod bisync;
 mod error;
 pub mod kvaesitso;
+pub mod kvaesitso_write;
 pub mod merge;
 pub mod quicksearch;
 pub mod report;

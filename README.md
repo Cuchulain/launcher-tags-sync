@@ -4,8 +4,9 @@ Turn your **[Kvaesitso](https://github.com/MM2-0/Kvaesitso)** app tags into
 **[Quick Search](https://github.com/teja2495/quick-search)** app nicknames, so an app tagged
 `music` in Kvaesitso can be found by typing `music` in Quick Search.
 
-> **v0.1 is one-way: Kvaesitso → Quick Search.** The `sync` command name is kept for the
-> future; nothing is written back to Kvaesitso and no existing nickname is ever removed.
+> **By default `sync` is one-way: Kvaesitso → Quick Search** (v0.1): nothing is written back to
+> Kvaesitso and no existing nickname is ever removed. Two-way sync with deletions is opt-in
+> via `--direction both` (v0.2, see below).
 
 The tool works offline on exported backup files. It never touches the phone, app databases
 or the network.
@@ -49,6 +50,32 @@ cargo install --path crates/launcher-tags-cli --locked
 
 5. Copy `merged.quicksearch` to the phone and import it in Quick Search's backup settings. Check a few apps' nicknames.
 
+### Two-way sync (v0.2)
+
+`--direction both` keeps both apps in sync, including deletions, using a private state file
+(see [`docs/BISYNC.md`](docs/BISYNC.md)). **Every** base-profile Quick Search app alias
+becomes a Kvaesitso tag of that app and vice versa.
+
+```shell
+# first time: union of both sides, nothing deleted
+launcher-tags-sync sync --direction both --init-state --state local-private/sync-state.json \
+  --kvaesitso kvaesitso.kvaesitso --quicksearch quick-search.quicksearch \
+  --output merged.quicksearch --kvaesitso-output merged.kvaesitso --dry-run
+# then without --dry-run; import BOTH outputs on the phone
+
+# every later sync: fresh exports, same state, no --init-state
+launcher-tags-sync sync --direction both --state local-private/sync-state.json \
+  --kvaesitso kvaesitso.kvaesitso --quicksearch quick-search.quicksearch \
+  --output merged.quicksearch --kvaesitso-output merged.kvaesitso
+```
+
+Safety nets: a deletion is only propagated when the alias was in the agreed state; an app
+missing from one backup is a reported conflict, not a deletion; more than
+`max(10, 25 %)` deletions need `--allow-mass-delete`; stale exports (older than those of the
+previous run) are refused unless `--allow-stale`; outputs that were apparently never imported
+stop the run unless `--pending discard|accept`. Kvaesitso's restore replaces all of its data
+with the backup, so import `merged.kvaesitso` right after exporting.
+
 ### Options
 
 | Option | Meaning |
@@ -57,7 +84,11 @@ cargo install --path crates/launcher-tags-cli --locked
 | `--report FILE` | JSON report: counts + warnings, no backup values |
 | `--dry-run` | print planned changes; the output backup is not written (a `--report` file still is, if requested) |
 | `--force` | allow replacing an existing `--output`/`--report` file; inputs can never be overwritten |
-| `--show-aliases` | also print the alias texts being added (terminal only) |
+| `--show-aliases` | also print the alias texts being added/removed (terminal only) |
+| `--direction both` | v0.2 two-way sync; needs `--state`, `--kvaesitso-output` |
+| `--state FILE` / `--init-state` | agreed state (private); create it on the first run |
+| `--pending error\|discard\|accept` | what to do when the previous outputs look un-imported |
+| `--allow-mass-delete`, `--allow-stale` | override the safety nets above |
 
 Exit codes: `0` success, `1` invalid input / refused / I/O error (no output written),
 `2` invalid command line.
@@ -157,9 +188,12 @@ cargo test -p launcher-tags-core --test private_integration -- --ignored --nocap
 Release process: [`docs/RELEASE.md`](docs/RELEASE.md). Changes: [`CHANGELOG.md`](CHANGELOG.md).
 Upstream revisions the formats were verified against: [`docs/SOURCES.md`](docs/SOURCES.md).
 
-## Known limitations (v0.1)
+## Known limitations
 
-* One-way only; aliases removed in Kvaesitso are not removed from Quick Search.
+* One-way mode never removes aliases; use `--direction both` for deletions.
+* Two-way mode: a Quick Search alias can only become a Kvaesitso tag for apps the Kvaesitso
+  backup already knows (in favorites or with a tag); others are reported and retried.
+  Restoring the generated Kvaesitso backup on a device is the user's final check.
 * Work/clone-profile app tags are skipped (only base-profile nicknames are written).
 * Tags containing a comma are skipped (no opt-in splitting yet).
 * Duplicate keys inside a JSON object are not detected (last one wins, like most parsers).

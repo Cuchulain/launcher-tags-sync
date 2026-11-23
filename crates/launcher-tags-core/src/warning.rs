@@ -20,6 +20,8 @@ pub enum WarningCategory {
     UntestedSourceFormat,
     /// The source contains no usable app tags at all.
     NoAppTags,
+    /// An archive member that looks related but cannot be interpreted safely.
+    UnexpectedMember,
 }
 
 impl WarningCategory {
@@ -34,6 +36,7 @@ impl WarningCategory {
             Self::MissingSourceMeta => "missing source meta",
             Self::UntestedSourceFormat => "untested source format",
             Self::NoAppTags => "no app tags",
+            Self::UnexpectedMember => "unexpected archive member",
         }
     }
 }

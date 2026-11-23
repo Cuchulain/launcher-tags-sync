@@ -6,6 +6,13 @@ All notable changes to this project are documented here. Format:
 ## [Unreleased]
 
 ### Added
+- `sync --direction both` (v0.2): three-way bidirectional sync of Kvaesitso app tags and
+  Quick Search app nicknames against a `--state` file, propagating additions and deletions;
+  writes a rewritten Kvaesitso backup (`--kvaesitso-output`) with all other members copied
+  raw. Safety nets: package-missing conflicts, mass-deletion guard, stale-export detection
+  (`--allow-stale`), un-imported-output detection (`--pending`). See `docs/BISYNC.md`.
+- `inspect`/reader: Kvaesitso `favorites.*` keys are used to resolve app components; warning
+  for unexpected `customizations.*` members.
 - Release workflow: tagged builds for macOS arm64 and Linux x86_64 with SHA-256 checksums.
 - CI job verifying the MSRV (Rust 1.88).
 

@@ -1,19 +1,21 @@
-//! `launcher-tags-sync` — one-way Kvaesitso → Quick Search app tag conversion.
+//! `launcher-tags-sync` — Kvaesitso app tags ↔ Quick Search app nicknames.
 
+mod bisync_cmd;
 mod fsio;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use anyhow::{bail, Context, Result};
-use clap::{ArgGroup, Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
 use launcher_tags_core::{
     kvaesitso, merge, quicksearch::QuickSearchBackup, report::Report, Limits, SourceTags,
 };
 
 const AFTER_HELP: &str = "\
-Direction: v0.1 is ONE-WAY, Kvaesitso -> Quick Search. Quick Search nicknames are never
-written back to Kvaesitso, and existing nicknames are never removed.
+Direction: by default sync is ONE-WAY, Kvaesitso -> Quick Search (v0.1 behaviour): nothing is
+written back to Kvaesitso and no existing nickname is removed. `--direction both` (v0.2)
+syncs both ways against a --state file and also propagates deletions (see docs/BISYNC.md).
 
 Privacy: backups are read locally; reports and warnings contain counts, categories and
 package names only, never tag values, notes or other settings.";
@@ -22,7 +24,7 @@ package names only, never tag values, notes or other settings.";
 #[command(
     name = "launcher-tags-sync",
     version,
-    about = "One-way conversion of Kvaesitso app tags into Quick Search app nicknames",
+    about = "Sync Kvaesitso app tags with Quick Search app nicknames (one-way by default)",
     after_help = AFTER_HELP
 )]
 struct Cli {
@@ -34,15 +36,19 @@ struct Cli {
 enum Command {
     /// Show the structure and counts of a backup (never prints values)
     Inspect(InspectArgs),
-    /// One-way: add Kvaesitso app tags as Quick Search app nicknames (Kvaesitso -> Quick Search)
+    /// One-way by default: add Kvaesitso app tags as Quick Search nicknames; `--direction both` syncs both ways
     #[command(
-        long_about = "One-way merge (Kvaesitso -> Quick Search, despite the command name).\n\n\
+        long_about = "Default: one-way merge (Kvaesitso -> Quick Search).\n\n\
 Reads app tags from a Kvaesitso backup and appends them as aliases to Quick Search app \
 nicknames (preferences.user_app_preferences[\"nickname_app_<package>\"]). Existing aliases \
 stay first and verbatim; all other Quick Search data is preserved. App shortcut tags, \
 work-profile app tags and tags containing commas are skipped with a count/warning.\n\n\
 The inputs are never modified. The output is written atomically and only replaces an \
-existing file with --force.",
+existing file with --force.\n\n\
+With --direction both (v0.2) the tool performs a three-way sync against --state: tags and \
+aliases added or deleted on either side since the last run are applied to the other side, \
+and both a Quick Search (--output) and a Kvaesitso (--kvaesitso-output) backup are written. \
+Import both on the phone afterwards.",
         after_help = AFTER_HELP
     )]
     Sync(SyncArgs),
@@ -63,7 +69,7 @@ struct InspectArgs {
 }
 
 #[derive(Args)]
-struct SyncArgs {
+pub(crate) struct SyncArgs {
     /// Source: Kvaesitso backup (*.kvaesitso, ZIP); read only
     #[arg(long, value_name = "FILE")]
     kvaesitso: PathBuf,
@@ -82,9 +88,46 @@ struct SyncArgs {
     /// Allow replacing an existing --output / --report file (never an input)
     #[arg(long)]
     force: bool,
-    /// Also print the alias texts being added (to your terminal only)
+    /// Also print the alias texts being added/removed (to your terminal only)
     #[arg(long)]
     show_aliases: bool,
+    /// to-quicksearch (one-way, default) or both (three-way sync with --state)
+    #[arg(long, value_enum, default_value_t = Direction::ToQuicksearch)]
+    direction: Direction,
+    /// [both] Sync state file with the last agreed aliases (private; updated on success)
+    #[arg(long, value_name = "FILE")]
+    state: Option<PathBuf>,
+    /// [both] First run: create --state (union of both sides, nothing deleted)
+    #[arg(long)]
+    init_state: bool,
+    /// [both] Where to write the updated Kvaesitso backup (must not be an input)
+    #[arg(long, value_name = "FILE")]
+    kvaesitso_output: Option<PathBuf>,
+    /// [both] If the previous run's output looks un-imported: stop (error), treat it as not
+    /// imported (discard) or treat the current exports as authoritative (accept)
+    #[arg(long, value_enum, default_value_t = PendingArg::Error)]
+    pending: PendingArg,
+    /// [both] Allow deleting more aliases in one run than the safety limit
+    #[arg(long)]
+    allow_mass_delete: bool,
+    /// [both] Accept inputs that look older than those of the previous sync
+    #[arg(long)]
+    allow_stale: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Direction {
+    /// Kvaesitso -> Quick Search only (v0.1)
+    ToQuicksearch,
+    /// Both ways with deletions, using --state (v0.2)
+    Both,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum PendingArg {
+    Error,
+    Discard,
+    Accept,
 }
 
 fn main() -> ExitCode {
@@ -102,18 +145,18 @@ fn main() -> ExitCode {
     }
 }
 
-fn read_source(path: &Path) -> Result<SourceTags> {
+pub(crate) fn read_source(path: &Path) -> Result<SourceTags> {
     kvaesitso::read_file(path, &Limits::default())
         .with_context(|| format!("cannot read Kvaesitso backup {}", path.display()))
 }
 
-fn read_target(path: &Path) -> Result<QuickSearchBackup> {
+pub(crate) fn read_target(path: &Path) -> Result<QuickSearchBackup> {
     let bytes = fsio::read_limited(path, fsio::MAX_QUICKSEARCH_BYTES, "Quick Search backup")?;
     QuickSearchBackup::parse(&bytes)
         .with_context(|| format!("cannot use Quick Search backup {}", path.display()))
 }
 
-fn print_warnings(source: &SourceTags) {
+pub(crate) fn print_warnings(source: &SourceTags) {
     for w in &source.warnings {
         eprintln!("warning: {} ({})", w, w.category.human());
     }
@@ -214,6 +257,18 @@ fn inspect(a: InspectArgs) -> Result<()> {
 }
 
 fn sync(a: SyncArgs) -> Result<()> {
+    if a.direction == Direction::Both {
+        return bisync_cmd::run(a);
+    }
+    if a.state.is_some()
+        || a.init_state
+        || a.kvaesitso_output.is_some()
+        || a.allow_mass_delete
+        || a.allow_stale
+        || a.pending != PendingArg::Error
+    {
+        bail!("--state, --init-state, --kvaesitso-output, --pending, --allow-mass-delete and --allow-stale require --direction both");
+    }
     let inputs: [(&str, &Path); 2] = [
         ("--kvaesitso", a.kvaesitso.as_path()),
         ("--quicksearch", a.quicksearch.as_path()),
