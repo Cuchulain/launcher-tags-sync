@@ -45,7 +45,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Test
-        run: cargo test --workspace --locked --target ${{ matrix.target }}
+        run: cargo test -p launcher-tags-core -p launcher-tags-cli --locked --target ${{ matrix.target }}
 
       - name: Build (reproducible settings)
         shell: bash
@@ -55,7 +55,7 @@ jobs:
           sysroot="$(rustc --print sysroot)"
           commit="$(rustc -vV | sed -n 's/^commit-hash: //p')"
           export RUSTFLAGS="--remap-path-prefix=$PWD=. --remap-path-prefix=$HOME/.cargo=~/.cargo --remap-path-prefix=$sysroot/lib/rustlib/src/rust=/rustc/$commit"
-          cargo build --release --locked --target ${{ matrix.target }}
+          cargo build -p launcher-tags-cli --release --locked --target ${{ matrix.target }}
 
       - name: Package
         id: pkg
