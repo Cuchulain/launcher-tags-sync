@@ -264,7 +264,11 @@ private fun ErrorCard(error: UiError, state: UiState, vm: AppViewModel) {
         ErrorKind.INTERNAL, null -> R.string.error_other
       }
     Text(stringResource(explanation))
-    Text(error.detail, style = MaterialTheme.typography.bodySmall)
+    // The engine's English detail helps for unexpected errors; for the guided cases the
+    // localized explanation and the buttons below say everything (and the detail mentions
+    // CLI flags).
+    val guided = error.kind in setOf(ErrorKind.STALE_INPUT, ErrorKind.PENDING_NOT_IMPORTED, ErrorKind.MASS_DELETE, ErrorKind.SETTINGS_NOT_EXPORTED)
+    if (!guided) Text(error.detail, style = MaterialTheme.typography.bodySmall)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
       when (error.kind) {
         ErrorKind.STALE_INPUT ->

@@ -9,6 +9,10 @@ All notable changes to this project are documented here. Format:
 - License: MIT (`LICENSE`).
 
 ### Added
+- Android app (`android/`, Kotlin/Compose) using the Rust core via the new
+  `launcher-tags-ffi` UniFFI crate: guided export/review/save/import, one-way and two-way
+  modes, run history; English and Czech. CI builds a debug APK.
+- `launcher_tags_core::run`: in-memory entry points shared by the CLI and the app.
 - `sync --direction both` (v0.2): three-way bidirectional sync of Kvaesitso app tags and
   Quick Search app nicknames against a `--state` file, propagating additions and deletions;
   writes a rewritten Kvaesitso backup (`--kvaesitso-output`) with all other members copied

@@ -164,6 +164,13 @@ See [`docs/SECURITY.md`](docs/SECURITY.md).
 `unchanged_existing_app_nickname_entries` counts existing app nickname keys, including
 profile keys, that were not modified.
 
+## Android app
+
+`android/` holds an Android app with the same engine (Rust core via UniFFI) and a guided
+export → review → save → import flow, in English and Czech. Debug APKs are built by CI
+(`.github/workflows/android.yml`, artifact `launcher-tags-sync-debug-apk`). Build and design
+notes: [`docs/ANDROID.md`](docs/ANDROID.md).
+
 ## Development
 
 ```shell
@@ -174,6 +181,8 @@ cargo test --workspace
 
 * `crates/launcher-tags-core` – pure library (no CLI, no file writes).
 * `crates/launcher-tags-cli` – the `launcher-tags-sync` binary (path checks, atomic writes).
+* `crates/launcher-tags-ffi` – UniFFI bindings for the Android app.
+* `android/` – the Android app (Kotlin, Compose).
 * `fixtures/` – synthetic backups and expected outputs; the tests are driven by them.
 
 Optional private check against your own backups (never committed; `local-private/` is

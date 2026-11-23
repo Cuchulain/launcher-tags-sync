@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["crates/launcher-tags-core", "crates/launcher-tags-cli", "crates/launcher-tags-ffi"]
+# `cargo run`/`cargo build` without -p: the CLI and its library (the FFI crate is built by Gradle).
+default-members = ["crates/launcher-tags-core", "crates/launcher-tags-cli"]
 
 [workspace.package]
 version = "0.1.0"
