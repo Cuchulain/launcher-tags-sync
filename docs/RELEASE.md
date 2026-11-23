@@ -16,7 +16,17 @@
    cargo test -p launcher-tags-core --test private_integration -- --ignored
    ```
 
-5. Commit `Cargo.lock`, tag `vX.Y.Z`, let CI pass on Linux and macOS.
+5. Commit `Cargo.lock`, let CI pass on Linux and macOS, then tag and push:
+
+   ```shell
+   git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z
+   ```
+
+   `.github/workflows/release.yml` then checks that the tag equals the workspace version,
+   tests and builds both targets with the pinned toolchain (1.88.0), packages
+   `launcher-tags-sync-vX.Y.Z-<target>.tar.gz` + `.sha256`, smoke-tests the binary and creates
+   the GitHub release with notes taken from this version's `CHANGELOG.md` section. Tags with a
+   `-` (e.g. `v0.2.0-rc.1`) become pre-releases.
 
 ## Reproducible builds
 

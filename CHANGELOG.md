@@ -5,6 +5,10 @@ All notable changes to this project are documented here. Format:
 
 ## [Unreleased]
 
+### Added
+- Release workflow: tagged builds for macOS arm64 and Linux x86_64 with SHA-256 checksums.
+- CI job verifying the MSRV (Rust 1.88).
+
 ## [0.1.0] - 2026-11-23
 
 ### Added
