@@ -9,6 +9,9 @@ All notable changes to this project are documented here. Format:
 - License: MIT (`LICENSE`).
 
 ### Added
+- Android: receive backups via “Share” (Quick Search exports through the share sheet) with
+  automatic type detection; remembered direction choice. Two-way sync verified end-to-end with
+  Kvaesitso 1.41.0 and Quick Search 5.1 (`docs/ANDROID.md`).
 - Android app (`android/`, Kotlin/Compose) using the Rust core via the new
   `launcher-tags-ffi` UniFFI crate: guided export/review/save/import, one-way and two-way
   modes, run history; English and Czech. CI builds a debug APK.

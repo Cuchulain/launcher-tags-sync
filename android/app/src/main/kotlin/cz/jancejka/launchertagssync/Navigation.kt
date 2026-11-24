@@ -1,6 +1,7 @@
 package cz.jancejka.launchertagssync
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
@@ -15,6 +16,9 @@ import cz.jancejka.launchertagssync.ui.wizard.WizardScreen
 fun MainNavigation(vm: AppViewModel) {
   val backStack = rememberNavBackStack(Home)
   val state by vm.state.collectAsStateWithLifecycle()
+  LaunchedEffect(state.openWizardRequests) {
+    if (state.openWizardRequests > 0 && backStack.lastOrNull() != Wizard) backStack.add(Wizard)
+  }
 
   NavDisplay(
     backStack = backStack,

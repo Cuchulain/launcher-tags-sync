@@ -22,10 +22,21 @@
         android:theme="@style/Theme.LauncherTagsSync">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Receive a backup via "Share". Quick Search exports through the share sheet as
+                 application/octet-stream (SettingsBackupActions.kt); no */* to stay out of
+                 unrelated share sheets. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/json" />
+                <data android:mimeType="application/zip" />
             </intent-filter>
         </activity>
     </application>

@@ -130,7 +130,11 @@ private fun ExportKvaesitso(state: UiState, vm: AppViewModel) {
     uri?.let { vm.pickKvaesitso(it.toString()) }
   }
   Text(stringResource(R.string.export_k_title), style = MaterialTheme.typography.headlineSmall)
+  state.quickSearch?.let { q ->
+    InfoCard(container = MaterialTheme.colorScheme.secondaryContainer) { Text(stringResource(R.string.other_received, "Quick Search", q.name)) }
+  }
   Text(stringResource(R.string.export_k_steps))
+  Text(stringResource(R.string.share_hint), style = MaterialTheme.typography.bodySmall)
   OpenAppButton(PartnerApp.Kvaesitso)
   Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !state.busy) {
     Text(stringResource(if (state.kvaesitso == null) R.string.pick_file else R.string.pick_other_file))
@@ -160,7 +164,11 @@ private fun ExportQuickSearch(state: UiState, vm: AppViewModel) {
     uri?.let { vm.pickQuickSearch(it.toString()) }
   }
   Text(stringResource(R.string.export_q_title), style = MaterialTheme.typography.headlineSmall)
+  state.kvaesitso?.let { k ->
+    InfoCard(container = MaterialTheme.colorScheme.secondaryContainer) { Text(stringResource(R.string.other_received, "Kvaesitso", k.name)) }
+  }
   Text(stringResource(R.string.export_q_steps))
+  Text(stringResource(R.string.share_hint), style = MaterialTheme.typography.bodySmall)
   OpenAppButton(PartnerApp.QuickSearch)
   Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !state.busy) {
     Text(stringResource(if (state.quickSearch == null) R.string.pick_file else R.string.pick_other_file))

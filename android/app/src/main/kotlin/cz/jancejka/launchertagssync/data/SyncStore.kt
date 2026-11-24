@@ -27,6 +27,7 @@ class SyncStore(private val dir: File) {
   private val stateFile = File(dir, "sync-state.json")
   private val prevStateFile = File(dir, "sync-state.json.prev")
   private val historyFile = File(dir, "history.json")
+  private val twoWayFlag = File(dir, "mode-two-way")
   private val json = Json { ignoreUnknownKeys = true }
 
   fun readState(): ByteArray? = stateFile.takeIf { it.isFile }?.readBytes()
@@ -44,6 +45,13 @@ class SyncStore(private val dir: File) {
     readState()?.let { writeAtomic(prevStateFile, it) }
     stateFile.delete()
   }
+
+  /** Remembered direction choice (two-way or one-way). */
+  var twoWay: Boolean
+    get() = twoWayFlag.isFile
+    set(value) {
+      if (value) writeAtomic(twoWayFlag, ByteArray(0)) else twoWayFlag.delete()
+    }
 
   fun history(): List<HistoryEntry> =
     runCatching { json.decodeFromString<List<HistoryEntry>>(historyFile.readText()) }.getOrDefault(emptyList())

@@ -219,4 +219,36 @@ class AppViewModelTest {
     vm.back()
     assertEquals(Step.Save, vm.state.value.step)
   }
+
+  private class BytesIo(private val files: Map<String, ByteArray>) : DocumentIo {
+    override fun read(uri: String) = DocumentIo.Picked(uri.substringAfterLast('/'), files.getValue(uri))
+
+    override fun write(uri: String, bytes: ByteArray) {}
+  }
+
+  @Test
+  fun sharedFilesAreDetectedAndOpenTheWizard() = runTest(dispatcher) {
+    val io =
+      BytesIo(
+        mapOf(
+          "content://share/qs" to "\n  {\"formatVersion\":2}".toByteArray(),
+          "content://share/kv" to byteArrayOf('P'.code.toByte(), 'K'.code.toByte(), 3, 4, 0),
+          "content://share/photo" to byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()),
+        )
+      )
+    val vm = vm(FakeEngine(), io, SyncStore(dir))
+    vm.receiveShared("content://share/qs")
+    advanceUntilIdle()
+    assertEquals(1, vm.state.value.openWizardRequests)
+    assertEquals("qs", vm.state.value.quickSearch?.name)
+    assertEquals(Step.ExportKvaesitso, vm.state.value.step)
+    vm.receiveShared("content://share/kv")
+    advanceUntilIdle()
+    assertEquals("kv", vm.state.value.kvaesitso?.name)
+    assertEquals(Step.ExportQuickSearch, vm.state.value.step)
+    vm.receiveShared("content://share/photo")
+    advanceUntilIdle()
+    assertEquals(ErrorKind.INVALID_INPUT, vm.state.value.error?.kind)
+    assertEquals("both picks are kept", "qs", vm.state.value.quickSearch?.name)
+  }
 }

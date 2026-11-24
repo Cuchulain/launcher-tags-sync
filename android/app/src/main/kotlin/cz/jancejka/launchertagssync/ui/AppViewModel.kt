@@ -57,6 +57,8 @@ data class UiState(
   val hasSyncState: Boolean = false,
   val history: List<HistoryEntry> = emptyList(),
   val coreVersion: String = "",
+  /** Incremented when something (e.g. a shared file) asks the UI to show the wizard. */
+  val openWizardRequests: Int = 0,
   // wizard
   val step: Step = Step.ExportKvaesitso,
   val kvaesitso: PickedBackup<KvaesitsoInfo>? = null,
@@ -106,10 +108,13 @@ class AppViewModel(
   }
 
   private fun refreshHome() {
-    _state.update { it.copy(hasSyncState = store.hasState(), history = store.history()) }
+    _state.update { it.copy(twoWay = store.twoWay, hasSyncState = store.hasState(), history = store.history()) }
   }
 
-  fun setTwoWay(twoWay: Boolean) = _state.update { it.copy(twoWay = twoWay) }
+  fun setTwoWay(twoWay: Boolean) {
+    store.twoWay = twoWay
+    _state.update { it.copy(twoWay = twoWay, preview = null) }
+  }
 
   /** Start a fresh wizard run (keeps the chosen mode). */
   fun startWizard() =
@@ -135,6 +140,37 @@ class AppViewModel(
     // Never step back once outputs were saved: re-planning would not match them.
     if (s.savedQuickSearch || s.savedKvaesitso) return
     _state.update { it.copy(step = prev, error = null) }
+  }
+
+  /**
+   * A backup shared to this app (Android "Share"): detect its type, put it into the wizard
+   * (starting a fresh one if the current run already saved outputs) and ask the UI to show it.
+   */
+  fun receiveShared(uri: String) {
+    if (_state.value.let { it.savedQuickSearch || it.savedKvaesitso || it.committed }) startWizard()
+    _state.update { it.copy(openWizardRequests = it.openWizardRequests + 1) }
+    load({
+      val doc = io.read(uri)
+      when (detectBackupType(doc.bytes)) {
+        BackupType.QuickSearch -> PickedBackup(doc.name, doc.bytes, engine.inspectQuickSearch(doc.bytes))
+        BackupType.Kvaesitso -> PickedBackup(doc.name, doc.bytes, engine.inspectKvaesitso(doc.bytes))
+        BackupType.Unknown -> throw SyncException.Failed(ErrorKind.INVALID_INPUT, "not a Quick Search or Kvaesitso backup")
+      }
+    }) { picked ->
+      @Suppress("UNCHECKED_CAST")
+      val next =
+        when (picked.info) {
+          is QuickSearchInfo -> copy(quickSearch = picked as PickedBackup<QuickSearchInfo>, preview = null)
+          else -> copy(kvaesitso = picked as PickedBackup<KvaesitsoInfo>, preview = null)
+        }
+      next.copy(
+        step =
+          when {
+            next.kvaesitso == null -> Step.ExportKvaesitso
+            else -> Step.ExportQuickSearch
+          }
+      )
+    }
   }
 
   fun pickKvaesitso(uri: String) =
@@ -270,3 +306,19 @@ fun Throwable.toUiError(): UiError =
     is SyncException.Failed -> UiError(kind, reason)
     else -> UiError(null, message ?: javaClass.simpleName)
   }
+
+enum class BackupType {
+  QuickSearch,
+  Kvaesitso,
+  Unknown,
+}
+
+/** Quick Search backups are JSON objects, Kvaesitso backups are ZIP archives. */
+fun detectBackupType(bytes: ByteArray): BackupType {
+  val first = bytes.firstOrNull { !it.toInt().toChar().isWhitespace() && it != 0xEF.toByte() && it != 0xBB.toByte() && it != 0xBF.toByte() }
+  return when {
+    bytes.size >= 4 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte() -> BackupType.Kvaesitso
+    first == '{'.code.toByte() -> BackupType.QuickSearch
+    else -> BackupType.Unknown
+  }
+}

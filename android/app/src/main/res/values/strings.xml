@@ -30,7 +30,9 @@
     <string name="export_k_title">Export your Kvaesitso backup</string>
     <string name="export_k_steps">1. Open Kvaesitso and go to Settings → Backup.\n2. Create a backup and save the .kvaesitso file.\n3. Come back here and select that file.</string>
     <string name="export_q_title">Export your Quick Search backup</string>
-    <string name="export_q_steps">1. Open Quick Search and go to Settings → Backup.\n2. Export a backup with “Settings” selected and save the .quicksearch file.\n3. Come back here and select that file.\n\nKeep this export: it is your way back if anything goes wrong.</string>
+    <string name="export_q_steps">1. Open Quick Search and go to Settings → Backup.\n2. Export a backup with “Settings” selected and share it to Launcher Tags Sync (or save the .quicksearch file and select it here).\n\nKeep this export: it is your way back if anything goes wrong.</string>
+    <string name="other_received">%1$s backup ready: %2$s ✓</string>
+    <string name="share_hint">Tip: you can also send the exported file here with “Share → Launcher Tags Sync”.</string>
     <string name="pick_file">Select backup file</string>
     <string name="pick_other_file">Select a different file</string>
     <string name="k_info">%1$s\nApp tags: %2$d on %3$d apps · pages: %4$d · shortcut tags ignored: %5$d</string>

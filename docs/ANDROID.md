@@ -45,5 +45,21 @@ Install on a device or emulator: `adb install -r app/build/outputs/apk/debug/app
   was refused as stale;
 * English and Czech UI.
 
-Not yet done: release signing (needs a keystore decision) and a test with the real Kvaesitso
-and Quick Search apps installed.
+## End-to-end test with the real apps (2026-11-24, emulator API 37)
+
+Kvaesitso 1.41.0 (`de.mm20.launcher2.release`) and Quick Search 5.1 (`com.tk.quicksearch`) from
+their GitHub releases, synthetic data only:
+
+1. Kvaesitso: Calendar tagged `planovani`, `schuzky`; Quick Search: Calendar nickname `diar`.
+2. Two-way run (first sync): plan = Quick Search +`planovani`,`schuzky`; Kvaesitso +`diar`.
+3. Kvaesitso **restored** the rewritten backup (accepted as 1.41.0 backup); Calendar showed
+   `#planovani #schuzky #diar` and was found by searching `diar`. All other backup members
+   (settings, widgets, favorites, search actions, theme) were byte-identical.
+4. Quick Search imported its backup; searching `schuzky` found Calendar; only
+   `nickname_app_com.google.android.calendar` differed from the export.
+5. Tag `schuzky` deleted in Kvaesitso, fresh exports, second run: plan = remove `schuzky` from
+   Quick Search, nothing for Kvaesitso; after import the nickname was `diar, planovani`.
+
+Found and fixed during the test: Quick Search exports through the share sheet, so the app now
+accepts backups via **Share → Launcher Tags Sync** (`application/octet-stream`, zip, json) and
+detects the type; the chosen direction is remembered.

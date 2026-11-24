@@ -26,7 +26,9 @@
     <string name="export_k_title">Exportuj zálohu Kvaesitso</string>
     <string name="export_k_steps">1. Otevři Kvaesitso a jdi do Nastavení → Záloha.\n2. Vytvoř zálohu a ulož soubor .kvaesitso.\n3. Vrať se sem a vyber ho.</string>
     <string name="export_q_title">Exportuj zálohu Quick Search</string>
-    <string name="export_q_steps">1. Otevři Quick Search a jdi do Nastavení → Záloha.\n2. Exportuj zálohu se zaškrtnutým „Nastavení“ a ulož soubor .quicksearch.\n3. Vrať se sem a vyber ho.\n\nTento export si nech: je to tvoje cesta zpět, kdyby se něco pokazilo.</string>
+    <string name="export_q_steps">1. Otevři Quick Search a jdi do Nastavení → Záloha.\n2. Exportuj zálohu se zaškrtnutým „Nastavení“ a sdílej ji do Launcher Tags Sync (nebo ulož soubor .quicksearch a vyber ho tady).\n\nTento export si nech: je to tvoje cesta zpět, kdyby se něco pokazilo.</string>
+    <string name="other_received">Záloha %1$s připravena: %2$s ✓</string>
+    <string name="share_hint">Tip: exportovaný soubor můžeš poslat i přes „Sdílet → Launcher Tags Sync“.</string>
     <string name="pick_file">Vybrat soubor zálohy</string>
     <string name="pick_other_file">Vybrat jiný soubor</string>
     <string name="k_info">%1$s\nTagy aplikací: %2$d u %3$d aplikací · stránek: %4$d · ignorované tagy zástupců: %5$d</string>
