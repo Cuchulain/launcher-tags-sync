@@ -5,6 +5,8 @@ All notable changes to this project are documented here. Format:
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
 ### Changed
 - License: MIT (`LICENSE`).
 
